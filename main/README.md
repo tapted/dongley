@@ -5,11 +5,13 @@ This README provides a comprehensive overview of the **ESP32-S3 Development Boar
 This document provides a detailed technical overview of the ESP32-S3 development board, including its internal circuitry, hardware modifications, and interface options.
 
 ## 1. Core Technical Specifications
-*   **Processor:** Xtensa® dual-core 32-bit LX7 CPU (up to 240 MHz).
-*   **Memory (N16R8):** 16 MB External Flash and **8 MB External PSRAM**.
+*   **Processor:** Xtensa® dual-core 32-bit LX7 (Revision v0.2), 240 MHz.
+*   **External Flash:** 16 MB Boya Flash, 80 MHz, DIO Mode.
+*   **External PSRAM:** 8 MB Octal PSRAM (AP Vendor), 80 MHz.
 *   **Connectivity:** 2.4 GHz Wi-Fi (802.11 b/g/n) and Bluetooth 5 (LE) with Mesh support.
 *   **Power:** AMS1117-3.3 LDO regulator for stable 3.3V power, supported by 10uF/0.1uF filtering capacitors for noise reduction.
 *   **Protection:** Integrated protection diodes to prevent current backflow to USB ports when using external power.
+*   **Console:** Hardware UART on GPIO 43/44.
 
 ---
 
