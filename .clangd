@@ -1,0 +1,6 @@
+CompileFlags:
+  CompilationDatabase: build/
+  Remove: [-f*, -m*]
+
+InlayHints:
+  ParameterNames: No

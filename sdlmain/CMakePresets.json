@@ -1,0 +1,28 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "clang-sdl",
+      "displayName": "Clang SDL Emulator",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../build_sdl",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "C:/msys64/clang64/bin/clang.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/clang64/bin/clang++.exe",
+        "CMAKE_C_COMPILER_LAUNCHER": "C:/msys64/clang64/bin/ccache.exe",
+        "CMAKE_CXX_COMPILER_LAUNCHER": "C:/msys64/clang64/bin/ccache.exe",
+        "CMAKE_MAKE_PROGRAM": "C:/msys64/clang64/bin/ninja.exe",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SDL_CCACHE": "OFF",
+        "LV_BUILD_CONF_DIR": "${sourceDir}/../src",
+
+        "ENABLE_CJSON_TEST": "OFF",
+        "ENABLE_CJSON_UNINSTALL": "OFF",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.5"
+      },
+      "environment": {
+        "CMAKE_BUILD_PARALLEL_LEVEL": "12"
+      }
+    }
+  ]
+}

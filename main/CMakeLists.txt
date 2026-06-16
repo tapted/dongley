@@ -1,2 +1,7 @@
-idf_component_register(SRCS "dongley.c"
-                    INCLUDE_DIRS ".")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+file(GLOB_RECURSE MAIN_SRCS "*.cpp")
+
+set(PROJECT_SOURCES ${MAIN_SRCS})
+
+idf_component_register(SRCS ${PROJECT_SOURCES} INCLUDE_DIRS ".")
