@@ -31,7 +31,7 @@ The board features **dual USB Type-C ports**, offering two distinct modes for co
 ### Status LEDs
 *   **PWR:** A red LED indicating that the board is receiving 3.3V power.
 *   **TX/RX:** Two LEDs that flash to indicate serial data activity via the CH343P chip.
-*   **RGB LED:** A programmable **WS2812 RGB LED** connected to **GPIO47**.
+* **RGB LED:** A programmable **WS2812 RGB LED** physically connected to **GPIO48** (Note: Often incorrectly documented by manufacturers as GPIO47).
 
 ---
 
@@ -66,8 +66,8 @@ The board exposes 44 pins in a dual-inline package (DIP) layout.
 | **Right 4-5** | 1, 2 | GPIO1, 2 | ADC1, TOUCH1-2, PWM |
 | **Right 6-13** | 42-35 | GPIO42-35 | MTMS, MTDI, MTCK, SPI, PWM |
 | **Right 14** | 0 | GPIO0 | **BOOT** (Strapping Pin) |
-| **Right 15-16** | 45, 48 | GPIO45, 48 | VSPI, PWM |
-| **Right 17** | 47 | GPIO47 | **RGB LED** (WS2812) |
+| **Right 15-16** | 45, 48 | GPIO45, 48 | VSPI, PWM (Onboard WS2812 is on 48) |
+| **Right 17** | 47 | GPIO47 | General GPIO (Often mislabeled as RGB LED) |
 | **Right 18** | 21 | GPIO21 | RTC Power Domain |
 | **Right 19-20** | 20, 19 | GPIO20, 19 | **USB D+ / D-** (Native USB) |
 | **Right 21-22** | GND | Ground | Common Ground |
