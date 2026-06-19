@@ -7,8 +7,8 @@
 namespace HAL {
 
 namespace I2CConfig {
-constexpr gpio_num_t PIN_SDA = GPIO_NUM_11;  //
-constexpr gpio_num_t PIN_SCL = GPIO_NUM_10;  //
+constexpr gpio_num_t PIN_SDA = GPIO_NUM_8;  // Left 12 (label 8)
+constexpr gpio_num_t PIN_SCL = GPIO_NUM_9;  // Left 15 (label 9)
 
 constexpr uint8_t BUS_NUM = 0;          // I2C_NUM_0
 constexpr uint32_t CLK_SPEED = 400000;  // 400kHz standard

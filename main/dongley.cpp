@@ -6,6 +6,9 @@
 #include "freertos/task.h"
 #include "led_strip.h"
 
+#include "hal/board.hpp"
+#include "halpp/segmented/i2c_7seg.hpp"
+
 namespace {
 constexpr char TAG[] = "dongley";
 constexpr int LED_GPIO_PIN = 48;
@@ -48,7 +51,26 @@ class Ws2812 {
 };
 }  // namespace
 
+EspResult<void> init_and_run_display() {
+  if (EspError err = HAL::I2C7Seg::init_default(HAL::I2CConfig::ADDR_7SEG)) {
+    return err.log(TAG, "Failed to initialize 7-segment display");
+  }
+  HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
+
+  // 5. Write to the local buffer using the modern C++ formatters
+  display.print_float(42.69, 2);
+  
+  // 6. Push the local buffer to the hardware via I2C
+  if (EspError err = display.write_display()) {
+    return err.log(TAG, "Failed to write 7-segment display");
+  }
+
+  return ESP_OK;
+}
+
 extern "C" void app_main(void) {
+  init_and_run_display();
+
   ESP_LOGI(TAG, "Starting Rainbow LED cycle...");
 
   Ws2812 led(LED_GPIO_PIN, LED_COUNT);
