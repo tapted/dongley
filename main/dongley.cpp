@@ -8,6 +8,7 @@
 
 #include "halpp/buzzer/passive.hpp"
 #include "halpp/buzzer/melodies.hpp"
+#include "halpp/buzzer/beeps.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
 
 #include "hal/board.hpp"
@@ -55,21 +56,23 @@ class Ws2812 {
 }  // namespace
 
 EspResult<void> init_and_run_display() {
-  if (EspError err = HAL::I2C7Seg::init_default(HAL::I2CConfig::ADDR_7SEG)) {
-    return err.log(TAG, "Failed to initialize 7-segment display");
-  }
   if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13 })) {
     return err.log(TAG, "Failed to initialize passive buzzer");
   }
-  HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
   HAL::Passive& buzzer = HAL::Passive::default_instance();
 
-  buzzer.play(HAL::melodies::mo_li_hua);
+  buzzer.play(HAL::beeps::startup);
+
+  if (EspError err = HAL::I2C7Seg::init_default(HAL::I2CConfig::ADDR_7SEG)) {
+    return err.log(TAG, "Failed to initialize 7-segment display");
+  }
+  HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
 
   // 5. Write to the local buffer using the modern C++ formatters
   // display.print_float(42.69, 2);
 
   vTaskDelay(pdMS_TO_TICKS(500));
+  buzzer.play(HAL::melodies::mo_li_hua);
 
   uint32_t i = 0;
   uint32_t divisor = 1;
@@ -82,7 +85,8 @@ EspResult<void> init_and_run_display() {
       divisor *= 10;
       delay_ms *= 10;
       next_threshold *= 10;
-
+      
+      buzzer.play(HAL::beeps::success);
       ESP_LOGI(TAG, "Scale shifted! Divisor: %lu, Delay: %lu ms", divisor, delay_ms);
     }
 
