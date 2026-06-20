@@ -4,10 +4,10 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "halpp/segmented/i2c_7seg.hpp"
 #include "led_strip.h"
 
 #include "hal/board.hpp"
-#include "halpp/segmented/i2c_7seg.hpp"
 
 namespace {
 constexpr char TAG[] = "dongley";
@@ -58,11 +58,38 @@ EspResult<void> init_and_run_display() {
   HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
 
   // 5. Write to the local buffer using the modern C++ formatters
-  display.print_float(42.69, 2);
-  
-  // 6. Push the local buffer to the hardware via I2C
-  if (EspError err = display.write_display()) {
-    return err.log(TAG, "Failed to write 7-segment display");
+  // display.print_float(42.69, 2);
+
+  vTaskDelay(pdMS_TO_TICKS(500));
+
+  uint32_t i = 0;
+  uint32_t divisor = 1;
+  uint32_t delay_ms = 10;
+  uint32_t next_threshold = 10000;
+
+  while (true) {
+    // When we cross the threshold, scale our units by 10
+    if (i >= next_threshold) {
+      divisor *= 10;
+      delay_ms *= 10;
+      next_threshold *= 10;
+
+      ESP_LOGI(TAG, "Scale shifted! Divisor: %lu, Delay: %lu ms", divisor, delay_ms);
+    }
+
+    // Print the scaled value (drops the least significant digits)
+    display.print_number(i / divisor);
+
+    if (EspError err = display.write_display()) {
+      return err.log(TAG, "Failed to write 7-segment display");
+    }
+
+    // Increment `i` by the divisor.
+    // This ensures `i` always represents the total elapsed time in 10ms ticks,
+    // and the display visibly updates on every single loop iteration.
+    i += divisor;
+
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
   }
 
   return ESP_OK;
