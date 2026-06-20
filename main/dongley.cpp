@@ -1,11 +1,14 @@
 #include <cstdint>
+#include <esp_err.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <led_strip.h>
+#include <soc/gpio_num.h>
 
-#include "esp_err.h"
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "halpp/buzzer/passive.hpp"
+#include "halpp/buzzer/melodies.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
-#include "led_strip.h"
 
 #include "hal/board.hpp"
 
@@ -55,7 +58,13 @@ EspResult<void> init_and_run_display() {
   if (EspError err = HAL::I2C7Seg::init_default(HAL::I2CConfig::ADDR_7SEG)) {
     return err.log(TAG, "Failed to initialize 7-segment display");
   }
+  if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13 })) {
+    return err.log(TAG, "Failed to initialize passive buzzer");
+  }
   HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
+  HAL::Passive& buzzer = HAL::Passive::default_instance();
+
+  buzzer.play(HAL::melodies::mo_li_hua);
 
   // 5. Write to the local buffer using the modern C++ formatters
   // display.print_float(42.69, 2);

@@ -18,3 +18,5 @@ target_include_directories(${COMPONENT_LIB} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/espbase/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/halpp/src
 )
+
+target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -W -Wextra)
