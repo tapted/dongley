@@ -1,14 +1,17 @@
 #include <cstdint>
 #include <esp_err.h>
 #include <esp_log.h>
+#include <esp_pm.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <led_strip.h>
 #include <soc/gpio_num.h>
 
-#include "halpp/buzzer/passive.hpp"
-#include "halpp/buzzer/melodies.hpp"
+#include "espbase/boot/check_crash_loop.hpp"
+#include "espbase/boot/delayed_pm_enable.hpp"
 #include "halpp/buzzer/beeps.hpp"
+#include "halpp/buzzer/melodies.hpp"
+#include "halpp/buzzer/passive.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
 
 #include "hal/board.hpp"
@@ -56,7 +59,7 @@ class Ws2812 {
 }  // namespace
 
 EspResult<void> init_and_run_display() {
-  if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13 })) {
+  if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13})) {
     return err.log(TAG, "Failed to initialize passive buzzer");
   }
   HAL::Passive& buzzer = HAL::Passive::default_instance();
@@ -72,7 +75,7 @@ EspResult<void> init_and_run_display() {
   // display.print_float(42.69, 2);
 
   vTaskDelay(pdMS_TO_TICKS(500));
-  buzzer.play(HAL::melodies::mo_li_hua);
+  // buzzer.play(HAL::melodies::mo_li_hua);
 
   uint32_t i = 0;
   uint32_t divisor = 1;
@@ -85,7 +88,7 @@ EspResult<void> init_and_run_display() {
       divisor *= 10;
       delay_ms *= 10;
       next_threshold *= 10;
-      
+
       buzzer.play(HAL::beeps::success);
       ESP_LOGI(TAG, "Scale shifted! Divisor: %lu, Delay: %lu ms", divisor, delay_ms);
     }
@@ -108,7 +111,16 @@ EspResult<void> init_and_run_display() {
   return ESP_OK;
 }
 
+static void on_crash_loop_threshold() {
+  Ws2812 led(LED_GPIO_PIN, LED_COUNT);
+  led.set_hsv(0, 0, 255, 20);  // Red color at low brightness
+  led.refresh();
+}
+
 extern "C" void app_main(void) {
+  check_crash_loop(on_crash_loop_threshold);
+  delayed_pm_enable();
+
   init_and_run_display();
 
   ESP_LOGI(TAG, "Starting Rainbow LED cycle...");
