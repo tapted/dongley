@@ -1,10 +1,8 @@
 #include <cstdint>
 #include <esp_err.h>
 #include <esp_log.h>
-#include <esp_pm.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <led_strip.h>
 #include <soc/gpio_num.h>
 
 #include "espbase/boot/check_crash_loop.hpp"
@@ -12,50 +10,14 @@
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/melodies.hpp"
 #include "halpp/buzzer/passive.hpp"
+#include "halpp/led_strip/led_strip.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
 
 #include "hal/board.hpp"
 
 namespace {
 constexpr char TAG[] = "dongley";
-constexpr int LED_GPIO_PIN = 48;
-constexpr int LED_COUNT = 1;
-
-class Ws2812 {
- public:
-  Ws2812(int gpio, int num_leds) {
-    led_strip_config_t strip_config = {};
-    strip_config.strip_gpio_num = gpio;
-    strip_config.max_leds = num_leds;
-    strip_config.led_model = LED_MODEL_WS2812;
-    strip_config.color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB;
-    strip_config.flags.invert_out = false;
-
-    led_strip_rmt_config_t rmt_config = {};
-    rmt_config.clk_src = RMT_CLK_SRC_DEFAULT;
-    rmt_config.resolution_hz = 10 * 1000 * 1000;  // 10MHz resolution
-    rmt_config.mem_block_symbols = 0;
-    rmt_config.flags.with_dma = false;
-
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &handle_));
-    ESP_ERROR_CHECK(led_strip_clear(handle_));
-  }
-
-  ~Ws2812() {
-    if (handle_) {
-      led_strip_del(handle_);
-    }
-  }
-
-  void set_hsv(uint32_t index, uint16_t hue, uint8_t sat, uint8_t val) {
-    ESP_ERROR_CHECK(led_strip_set_pixel_hsv(handle_, index, hue, sat, val));
-  }
-
-  void refresh() { ESP_ERROR_CHECK(led_strip_refresh(handle_)); }
-
- private:
-  led_strip_handle_t handle_ = nullptr;
-};
+constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
 }  // namespace
 
 EspResult<void> init_and_run_display() {
@@ -112,8 +74,11 @@ EspResult<void> init_and_run_display() {
 }
 
 static void on_crash_loop_threshold() {
-  Ws2812 led(LED_GPIO_PIN, LED_COUNT);
-  led.set_hsv(0, 0, 255, 20);  // Red color at low brightness
+  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
+      .log_error(TAG, "Failed to init crash loop LED");
+  HAL::LedStrip& led = HAL::LedStrip::default_instance();
+
+  led.set_pixel_hsv(0, 0, 255, 20);  // Red color at low brightness
   led.refresh();
 }
 
@@ -125,15 +90,17 @@ extern "C" void app_main(void) {
 
   ESP_LOGI(TAG, "Starting Rainbow LED cycle...");
 
-  Ws2812 led(LED_GPIO_PIN, LED_COUNT);
+  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
+      .log_error(TAG, "Failed to init default LED");
+  HAL::LedStrip& led = HAL::LedStrip::default_instance();
 
   uint16_t hue = 0;
 
   while (true) {
     // hue: 0-359, sat: 0-255, val: 0-255
     // Value (brightness) is kept low at 20 to prevent blinding glare and high current draw
-    led.set_hsv(0, hue, 255, 20);
-    led.refresh();
+    led.set_pixel_hsv(0, hue, 255, 20).log_error(TAG, "Failed to set LED color");
+    led.refresh().log_error(TAG, "Failed to refresh LED");
 
     hue = (hue + 1) % 360;
 

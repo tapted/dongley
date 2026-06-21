@@ -1,8 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <driver/gpio.h>
-#include <driver/i2c_master.h>
+#include <soc/gpio_num.h>
 
 namespace HAL {
 
