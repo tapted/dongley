@@ -20,3 +20,4 @@ target_include_directories(${COMPONENT_LIB} PRIVATE
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -W -Wextra -Wunused)
+# set_target_properties(${COMPONENT_LIB} PROPERTIES UNITY_BUILD ON)

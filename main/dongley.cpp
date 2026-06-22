@@ -16,9 +16,9 @@
 #include "hal/board.hpp"
 
 namespace {
-constexpr char TAG[] = "dongley";
-constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
-}  // namespace
+static constexpr char TAG[] = "dongley";
+static constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
+}
 
 EspResult<void> init_and_run_display() {
   if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13})) {
