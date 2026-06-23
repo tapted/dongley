@@ -7,10 +7,12 @@
 
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
+#include "espbase/nvs_store.hpp"
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/melodies.hpp"
 #include "halpp/buzzer/passive.hpp"
 #include "halpp/led_strip/led_strip.hpp"
+#include "halpp/network/default_network.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
 
 #include "hal/board.hpp"
@@ -18,6 +20,16 @@
 namespace {
 static constexpr char TAG[] = "dongley";
 static constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
+static volatile bool ntp_is_ready = false;
+}  // namespace
+
+class Network : public DefaultNetwork {
+ public:
+  void network_ready(const esp_netif_ip_info_t& ip_info) override {}
+};
+
+namespace {
+Network network;
 }
 
 EspResult<void> init_and_run_display() {
@@ -67,9 +79,17 @@ EspResult<void> init_and_run_display() {
     // and the display visibly updates on every single loop iteration.
     i += divisor;
 
+    if (ntp_is_ready) {
+      break;
+    }
+
     vTaskDelay(pdMS_TO_TICKS(delay_ms));
   }
 
+  while (true) {
+    uint32_t delay_ms = HAL::I2C7Seg::default_instance().show_time();
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
+  }
   return ESP_OK;
 }
 
@@ -85,6 +105,10 @@ static void on_crash_loop_threshold() {
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
   delayed_pm_enable();
+
+  NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
+  network.start();
+  network.time_sync_callback = [](struct timeval* tv) { ntp_is_ready = true; };
 
   init_and_run_display();
 
