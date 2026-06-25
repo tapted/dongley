@@ -14,6 +14,7 @@
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
+#include "halpp/segmented/clock_task.hpp"
 
 #include "hal/board.hpp"
 
@@ -30,7 +31,8 @@ class Network : public DefaultNetwork {
 
 namespace {
 Network network;
-}
+ClockTask clock_task;
+}  // namespace
 
 EspResult<void> init_and_run_display() {
   if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13})) {
@@ -79,16 +81,10 @@ EspResult<void> init_and_run_display() {
     // and the display visibly updates on every single loop iteration.
     i += divisor;
 
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
     if (ntp_is_ready) {
       break;
     }
-
-    vTaskDelay(pdMS_TO_TICKS(delay_ms));
-  }
-
-  while (true) {
-    uint32_t delay_ms = HAL::I2C7Seg::default_instance().show_time();
-    vTaskDelay(pdMS_TO_TICKS(delay_ms));
   }
   return ESP_OK;
 }
@@ -108,7 +104,10 @@ extern "C" void app_main(void) {
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   network.start();
-  network.time_sync_callback = [](struct timeval* tv) { ntp_is_ready = true; };
+  network.time_sync_callback = [](struct timeval* tv) {
+    ntp_is_ready = true;
+    clock_task.on_time_synced();
+  };
 
   init_and_run_display();
 
