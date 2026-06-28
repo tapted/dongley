@@ -13,8 +13,10 @@
 #include "halpp/buzzer/passive.hpp"
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
-#include "halpp/segmented/i2c_7seg.hpp"
 #include "halpp/segmented/clock_task.hpp"
+#include "halpp/segmented/i2c_7seg.hpp"
+#include "happy/entities/light.hpp"
+#include "happy/transports/mqtt_device.hpp"
 
 #include "hal/board.hpp"
 
@@ -22,17 +24,50 @@ namespace {
 static constexpr char TAG[] = "dongley";
 static constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
 static volatile bool ntp_is_ready = false;
+static volatile bool got_mqtt_command = false;
 }  // namespace
 
 class Network : public DefaultNetwork {
  public:
-  void network_ready(const esp_netif_ip_info_t& ip_info) override {}
+  void network_ready(const esp_netif_ip_info_t& ip_info) override;
 };
 
 namespace {
 Network network;
 ClockTask clock_task;
+
+HAPPY::Transports::MqttDevice dongley_device({
+    .identifiers = "dongley_v1_001",
+    .name = "Dongley",
+    .manufacturer = "Custom",
+    .model = "ESP32-S3 WROOM-1 DevKit",
+    .sw_version = "0.1",  // esp_app_get_description()->version
+});
+
+void on_light_update(const HAPPY::Entities::Light& light) {
+  got_mqtt_command = true;
+  auto& strip = HAL::LedStrip::default_instance();
+  auto [r, g, b] = light.scaled_rgb();
+
+  strip.set_pixel(0, r, g, b);
+  strip.refresh();
+}
+
+HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
+                                   {
+                                       .supports_rgb = true,
+                                       .on_update = on_light_update,
+                                   });
+
 }  // namespace
+
+void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
+  esp_mqtt_client_config_t mqtt_cfg = {};
+  mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
+  mqtt_cfg.credentials.username = "puck1e80";
+  mqtt_cfg.credentials.authentication.password = "A9CeSm4MX7tcSMT";
+  dongley_device.begin(mqtt_cfg);
+}
 
 EspResult<void> init_and_run_display() {
   if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13})) {
@@ -105,7 +140,7 @@ extern "C" void app_main(void) {
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   network.start();
-  network.time_sync_callback = [](struct timeval* tv) {
+  network.time_sync_callback = [](struct timeval* /*tv*/) {
     ntp_is_ready = true;
     clock_task.on_time_synced();
   };
@@ -121,12 +156,14 @@ extern "C" void app_main(void) {
   uint16_t hue = 0;
 
   while (true) {
-    // hue: 0-359, sat: 0-255, val: 0-255
-    // Value (brightness) is kept low at 20 to prevent blinding glare and high current draw
-    led.set_pixel_hsv(0, hue, 255, 20).log_error(TAG, "Failed to set LED color");
-    led.refresh().log_error(TAG, "Failed to refresh LED");
+    if (!got_mqtt_command) {
+      // hue: 0-359, sat: 0-255, val: 0-255
+      // Value (brightness) is kept low at 20 to prevent blinding glare and high current draw
+      led.set_pixel_hsv(0, hue, 255, 20).log_error(TAG, "Failed to set LED color");
+      led.refresh().log_error(TAG, "Failed to refresh LED");
 
-    hue = (hue + 1) % 360;
+      hue = (hue + 1) % 360;
+    }
 
     // 10ms delay yields approximately a 3.6-second rainbow cycle
     // vTaskDelay(pdMS_TO_TICKS(10));

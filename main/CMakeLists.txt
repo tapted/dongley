@@ -3,6 +3,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 file(GLOB_RECURSE DEPS_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/espbase/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/halpp/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/happy/src/*.cpp
 )
 file(GLOB_RECURSE MAIN_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
@@ -17,6 +18,7 @@ target_include_directories(${COMPONENT_LIB} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/espbase/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/halpp/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/happy/src
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -W -Wextra -Wunused)
