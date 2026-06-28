@@ -15,6 +15,7 @@
 #include "halpp/network/default_network.hpp"
 #include "halpp/segmented/clock_task.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
+#include "happy/entities/alarm.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/transports/mqtt_device.hpp"
 
@@ -32,9 +33,32 @@ class Network : public DefaultNetwork {
   void network_ready(const esp_netif_ip_info_t& ip_info) override;
 };
 
+static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
+  const auto tone = alarm.selected_tone();
+  ESP_LOGI(TAG, "Alarm %d triggered!", alarm.id);
+  if (tone == "acknowledge") {
+    HAL::Passive::default_instance().play(HAL::beeps::acknowledge);
+  } else if (tone == "success") {
+    HAL::Passive::default_instance().play(HAL::beeps::success);
+  } else if (tone == "error") {
+    HAL::Passive::default_instance().play(HAL::beeps::error);
+  } else if (tone == "startup") {
+    HAL::Passive::default_instance().play(HAL::beeps::startup);
+  } else if (tone == "Jasmine Flower") {
+    HAL::Passive::default_instance().play(HAL::melodies::mo_li_hua);
+  }
+}
+static HAPPY::Entities::AlarmController* alarm1 = nullptr;
+
+static void on_alarm(size_t index) {
+  if (alarm1 && index == 1) {
+    trigger_alarm(*alarm1);
+  }
+}
+
 namespace {
 Network network;
-ClockTask clock_task;
+ClockTask clock_task(on_alarm);
 
 HAPPY::Transports::MqttDevice dongley_device({
     .identifiers = "dongley_v1_001",
@@ -144,6 +168,17 @@ extern "C" void app_main(void) {
     ntp_is_ready = true;
     clock_task.on_time_synced();
   };
+
+  alarm1 = new HAPPY::Entities::AlarmController(
+      dongley_device, 1,
+      [](const HAPPY::Entities::AlarmController& alarm) {
+        clock_task.set_alarm(alarm.id, alarm.time().hour(), alarm.time().minute(),
+                             alarm.time().second());
+        ESP_LOGI(TAG, "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id,
+                 alarm.time().hour(), alarm.time().minute(), alarm.time().second(),
+                 alarm.selected_tone().data());
+      },
+      trigger_alarm);
 
   init_and_run_display();
 

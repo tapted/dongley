@@ -6,3 +6,7 @@
 	path = deps/espbase
 	url = https://github.com/tapted/espbase.git
 	branch = main
+[submodule "deps/happy"]
+	path = deps/happy
+	url = https://github.com/tapted/happy.git
+	branch = main
