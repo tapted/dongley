@@ -40,7 +40,8 @@ EspResult<void> init_and_run_display() {
   }
   HAL::Passive& buzzer = HAL::Passive::default_instance();
 
-  buzzer.play(HAL::beeps::startup);
+  // disable during development - it's too annoying :P.
+  // buzzer.play(HAL::beeps::startup);
 
   if (EspError err = HAL::I2C7Seg::init_default(HAL::I2CConfig::ADDR_7SEG)) {
     return err.log(TAG, "Failed to initialize 7-segment display");
@@ -128,6 +129,7 @@ extern "C" void app_main(void) {
     hue = (hue + 1) % 360;
 
     // 10ms delay yields approximately a 3.6-second rainbow cycle
-    vTaskDelay(pdMS_TO_TICKS(10));
+    // vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
