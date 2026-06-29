@@ -17,6 +17,7 @@
 #include "halpp/segmented/i2c_7seg.hpp"
 #include "happy/entities/alarm.hpp"
 #include "happy/entities/light.hpp"
+#include "happy/entities/system_diagnostics.hpp"
 #include "happy/transports/mqtt_device.hpp"
 
 #include "hal/board.hpp"
@@ -49,6 +50,7 @@ static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
   }
 }
 static HAPPY::Entities::AlarmController* alarm1 = nullptr;
+static HAPPY::Entities::SystemDiagnostics* diagnostics = nullptr;
 
 static void on_alarm(size_t index) {
   if (alarm1 && index == 1) {
@@ -163,11 +165,8 @@ extern "C" void app_main(void) {
   delayed_pm_enable();
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
-  network.start();
-  network.time_sync_callback = [](struct timeval* /*tv*/) {
-    ntp_is_ready = true;
-    clock_task.on_time_synced();
-  };
+  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
+      .log_error(TAG, "Failed to init default LED");
 
   alarm1 = new HAPPY::Entities::AlarmController(
       dongley_device, 1,
@@ -179,17 +178,23 @@ extern "C" void app_main(void) {
                  alarm.selected_tone().data());
       },
       trigger_alarm);
+  
+  diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
+
+  // Entities must be registered before the network is started so discovery messages are not missed.
+  network.start();
+  network.time_sync_callback = [](struct timeval* /*tv*/) {
+    ntp_is_ready = true;
+    clock_task.on_time_synced();
+    diagnostics->publish_all();  // Re-publish diagnostics after NTP sync.
+  };
 
   init_and_run_display();
 
-  ESP_LOGI(TAG, "Starting Rainbow LED cycle...");
+  ESP_LOGI(TAG, "Starting Rainbow LED cycle. got_mqtt_command=%d", got_mqtt_command);
 
-  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
-      .log_error(TAG, "Failed to init default LED");
   HAL::LedStrip& led = HAL::LedStrip::default_instance();
-
   uint16_t hue = 0;
-
   while (true) {
     if (!got_mqtt_command) {
       // hue: 0-359, sat: 0-255, val: 0-255
