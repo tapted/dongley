@@ -34,6 +34,10 @@ class Network : public DefaultNetwork {
   void network_ready(const esp_netif_ip_info_t& ip_info) override;
 };
 
+static constexpr const char* const ALARM_TONES[] = {
+    "acknowledge", "success", "error", "startup", "Jasmine Flower", "Radioactive",
+};
+
 static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
   const auto tone = alarm.selected_tone();
   ESP_LOGI(TAG, "Alarm %d triggered!", alarm.id);
@@ -47,6 +51,8 @@ static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
     HAL::Passive::default_instance().play(HAL::beeps::startup);
   } else if (tone == "Jasmine Flower") {
     HAL::Passive::default_instance().play(HAL::melodies::mo_li_hua);
+  } else if (tone == "Radioactive") {
+    HAL::Passive::default_instance().play(HAL::melodies::radioactive_riff);
   }
 }
 static HAPPY::Entities::AlarmController* alarm1 = nullptr;
@@ -169,7 +175,7 @@ extern "C" void app_main(void) {
       .log_error(TAG, "Failed to init default LED");
 
   alarm1 = new HAPPY::Entities::AlarmController(
-      dongley_device, 1,
+      dongley_device, 1, ALARM_TONES,
       [](const HAPPY::Entities::AlarmController& alarm) {
         clock_task.set_alarm(alarm.id, alarm.time().hour(), alarm.time().minute(),
                              alarm.time().second());
@@ -178,7 +184,7 @@ extern "C" void app_main(void) {
                  alarm.selected_tone().data());
       },
       trigger_alarm);
-  
+
   diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
 
   // Entities must be registered before the network is started so discovery messages are not missed.
