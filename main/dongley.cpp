@@ -7,10 +7,12 @@
 
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
+#include "espbase/esp_task.hpp"
 #include "espbase/nvs_store.hpp"
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/melodies.hpp"
 #include "halpp/buzzer/passive.hpp"
+#include "halpp/display/ssd1306.hpp"
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
 #include "halpp/segmented/clock_task.hpp"
@@ -19,7 +21,6 @@
 #include "happy/entities/light.hpp"
 #include "happy/entities/system_diagnostics.hpp"
 #include "happy/transports/mqtt_device.hpp"
-#include "halpp/display/ssd1306.hpp"
 
 #include "hal/board.hpp"
 
@@ -170,8 +171,14 @@ static void on_crash_loop_threshold() {
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
   delayed_pm_enable();
-
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
+
+  EspTask<int> display_task;
+  display_task.start({.core_id = 1}, 0, [](auto&) {
+    // Initialize the display in parallel.
+    HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
+  });
+
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
       .log_error(TAG, "Failed to init default LED");
 
@@ -197,7 +204,6 @@ extern "C" void app_main(void) {
   };
 
   init_and_run_display();
-  HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
 
   ESP_LOGI(TAG, "Starting Rainbow LED cycle. got_mqtt_command=%d", got_mqtt_command);
 
