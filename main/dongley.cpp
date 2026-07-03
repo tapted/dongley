@@ -19,6 +19,7 @@
 #include "happy/entities/light.hpp"
 #include "happy/entities/system_diagnostics.hpp"
 #include "happy/transports/mqtt_device.hpp"
+#include "halpp/display/ssd1306.hpp"
 
 #include "hal/board.hpp"
 
@@ -196,6 +197,7 @@ extern "C" void app_main(void) {
   };
 
   init_and_run_display();
+  HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
 
   ESP_LOGI(TAG, "Starting Rainbow LED cycle. got_mqtt_command=%d", got_mqtt_command);
 
