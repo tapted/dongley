@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <lvgl.h>
 #include <soc/gpio_num.h>
 
 #include "espbase/boot/check_crash_loop.hpp"
@@ -12,6 +13,8 @@
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/melodies.hpp"
 #include "halpp/buzzer/passive.hpp"
+#include "halpp/config.hpp"
+#include "halpp/display/display.hpp"
 #include "halpp/display/ssd1306.hpp"
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
@@ -166,15 +169,50 @@ static void on_crash_loop_threshold() {
   led.refresh();
 }
 
+extern std::mutex lvgl_mutex;
+std::mutex lvgl_mutex;
+static YieldingTask<int> lvgl_loop;
+
+std::optional<uint32_t> lvgl_step_function(YieldingTask<int>&) {
+  std::lock_guard<std::mutex> lock(lvgl_mutex);
+  uint32_t delay_ms = lv_timer_handler();
+  ESP_LOGI(TAG, "LVGL step function executed. Next delay: %u ms", delay_ms);
+  if (delay_ms == LV_NO_TIMER_READY) return std::nullopt;
+  return delay_ms;
+}
+
+void show_dongley_test_label() {
+  // 1. Lock the UI! (Crucial if the LVGL task is already running)
+  std::lock_guard<std::mutex> lock(lvgl_mutex);
+
+  // 2. Create a label attached to the current active screen
+  lv_obj_t* label = lv_label_create(lv_screen_active());
+
+  // 3. Set the text
+  lv_label_set_text(label, "Dongley");
+
+  // 4. Let LVGL dynamically center it on the 128x64 display
+  lv_obj_center(label);
+}
+
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
   delayed_pm_enable();
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
 
-  EspTask<int> display_task;
-  display_task.start({.core_id = 1}, 0, [](auto&) {
+  EspTask<int> display_init_task;
+  display_init_task.start({.core_id = 1}, 0, [](auto&) {
     // Initialize the display in parallel.
     HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
+    HAL::Ssd1306::default_instance().init_lvgl().log_error(TAG, "Failed to init LVGL display");
+    lvgl_loop.start(
+        {
+            .stack_size = HAL::config::lvgl::TASK_STACK_SIZE,
+            .priority = HAL::config::lvgl::TASK_PRIORITY,
+            .core_id = 1,
+        },
+        0, lvgl_step_function);
+    show_dongley_test_label();
   });
 
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})

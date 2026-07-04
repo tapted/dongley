@@ -3873,18 +3873,13 @@ CONFIG_LV_CONF_SKIP=y
 #
 # Color Settings
 #
-# default:
 # CONFIG_LV_COLOR_DEPTH_32 is not set
-# default:
 # CONFIG_LV_COLOR_DEPTH_24 is not set
-# default:
-CONFIG_LV_COLOR_DEPTH_16=y
-# default:
+# CONFIG_LV_COLOR_DEPTH_16 is not set
 # CONFIG_LV_COLOR_DEPTH_8 is not set
+CONFIG_LV_COLOR_DEPTH_1=y
 # default:
-# CONFIG_LV_COLOR_DEPTH_1 is not set
-# default:
-CONFIG_LV_COLOR_DEPTH=16
+CONFIG_LV_COLOR_DEPTH=1
 # end of Color Settings
 
 #
@@ -3932,24 +3927,17 @@ CONFIG_LV_DPI_DEF=130
 #
 # Operating System (OS)
 #
-# default:
-CONFIG_LV_OS_NONE=y
-# default:
+# CONFIG_LV_OS_NONE is not set
 # CONFIG_LV_OS_PTHREAD is not set
-# default:
-# CONFIG_LV_OS_FREERTOS is not set
-# default:
+CONFIG_LV_OS_FREERTOS=y
 # CONFIG_LV_OS_CMSIS_RTOS2 is not set
-# default:
 # CONFIG_LV_OS_RTTHREAD is not set
-# default:
 # CONFIG_LV_OS_WINDOWS is not set
-# default:
 # CONFIG_LV_OS_MQX is not set
-# default:
 # CONFIG_LV_OS_SDL2 is not set
-# default:
 # CONFIG_LV_OS_CUSTOM is not set
+# default:
+CONFIG_LV_USE_FREERTOS_TASK_NOTIFY=y
 # end of Operating System (OS)
 
 #
@@ -3963,6 +3951,10 @@ CONFIG_LV_DRAW_BUF_ALIGN=4
 CONFIG_LV_DRAW_LAYER_SIMPLE_BUF_SIZE=24576
 # default:
 CONFIG_LV_DRAW_LAYER_MAX_MEMORY=0
+# default:
+CONFIG_LV_DRAW_THREAD_STACK_SIZE=8192
+# default:
+CONFIG_LV_DRAW_THREAD_PRIO=3
 # default:
 CONFIG_LV_USE_DRAW_SW=y
 # default:
@@ -4379,17 +4371,11 @@ CONFIG_LV_USE_WIN=y
 # Themes
 #
 # default:
-CONFIG_LV_USE_THEME_DEFAULT=y
+# CONFIG_LV_USE_THEME_DEFAULT is not set
 # default:
-# CONFIG_LV_THEME_DEFAULT_DARK is not set
+# CONFIG_LV_USE_THEME_SIMPLE is not set
 # default:
-CONFIG_LV_THEME_DEFAULT_GROW=y
-# default:
-CONFIG_LV_THEME_DEFAULT_TRANSITION_TIME=80
-# default:
-CONFIG_LV_USE_THEME_SIMPLE=y
-# default:
-# CONFIG_LV_USE_THEME_MONO is not set
+CONFIG_LV_USE_THEME_MONO=y
 # end of Themes
 
 #
