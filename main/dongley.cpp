@@ -22,8 +22,6 @@
 #include "happy/entities/system_diagnostics.hpp"
 #include "happy/transports/mqtt_device.hpp"
 
-#include "hal/board.hpp"
-
 namespace {
 static constexpr char TAG[] = "dongley";
 static constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
@@ -112,7 +110,7 @@ EspResult<void> init_and_run_display() {
   // disable during development - it's too annoying :P.
   // buzzer.play(HAL::beeps::startup);
 
-  if (EspError err = HAL::I2C7Seg::init_default(HAL::I2CConfig::ADDR_7SEG)) {
+  if (EspError err = HAL::I2C7Seg::init_default()) {
     return err.log(TAG, "Failed to initialize 7-segment display");
   }
   HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();

@@ -2,3 +2,4 @@ build
 build_sdl
 managed_components
 src/network/ssid.h
+size_report.txt
