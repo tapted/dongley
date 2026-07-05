@@ -68,10 +68,10 @@ static void on_alarm(size_t index) {
 }
 
 namespace {
-Network network;
-ClockTask clock_task(on_alarm);
+constinit Network network;
+constinit ClockTask clock_task(on_alarm);
 
-HAPPY::Transports::MqttDevice dongley_device({
+constinit HAPPY::Transports::MqttDevice dongley_device({
     .identifiers = "dongley_v1_001",
     .name = "Dongley",
     .manufacturer = "Custom",
