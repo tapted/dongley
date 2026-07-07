@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <esp_err.h>
 #include <esp_log.h>
+#include <esp_ota_ops.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <lvgl.h>
@@ -22,6 +23,7 @@
 #include "halpp/segmented/i2c_7seg.hpp"
 #include "happy/entities/alarm.hpp"
 #include "happy/entities/light.hpp"
+#include "happy/entities/ota.hpp"
 #include "happy/entities/system_diagnostics.hpp"
 #include "happy/transports/mqtt_device.hpp"
 
@@ -58,8 +60,10 @@ static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
     HAL::Passive::default_instance().play(HAL::melodies::radioactive_riff);
   }
 }
+
 static HAPPY::Entities::AlarmController* alarm1 = nullptr;
 static HAPPY::Entities::SystemDiagnostics* diagnostics = nullptr;
+static HAPPY::Entities::OtaController* ota_controller = nullptr;
 
 static void on_alarm(size_t index) {
   if (alarm1 && index == 1) {
@@ -178,6 +182,11 @@ void show_dongley_test_label() {
   lv_obj_center(label);
 }
 
+// We use a static atomic counter to track the number of startup checks that need to complete before
+// marking the app as valid and canceling any rollback. This ensures that both the NTP sync and
+// display initialization have completed successfully before proceeding.
+static std::atomic<int> startup_checks = 2;
+
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
   delayed_pm_enable();
@@ -189,6 +198,7 @@ extern "C" void app_main(void) {
     HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
     HAL::Ssd1306::default_instance().init_lvgl().log_error(TAG, "Failed to init LVGL display");
     show_dongley_test_label();
+    if (--startup_checks == 0) esp_ota_mark_app_valid_cancel_rollback();
   });
 
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
@@ -206,6 +216,7 @@ extern "C" void app_main(void) {
       trigger_alarm);
 
   diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
+  ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
 
   // Entities must be registered before the network is started so discovery messages are not missed.
   network.start();
@@ -213,6 +224,7 @@ extern "C" void app_main(void) {
     ntp_is_ready = true;
     clock_task.on_time_synced();
     diagnostics->publish_all();  // Re-publish diagnostics after NTP sync.
+    if (--startup_checks == 0) esp_ota_mark_app_valid_cancel_rollback();
   };
 
   init_and_run_display();
