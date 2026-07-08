@@ -1,7 +1,6 @@
 #include <cstdint>
 #include <esp_err.h>
 #include <esp_log.h>
-#include <esp_ota_ops.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <lvgl.h>
@@ -9,6 +8,7 @@
 
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
+#include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/esp_task.hpp"
 #include "espbase/nvs_store.hpp"
 #include "halpp/buzzer/beeps.hpp"
@@ -190,6 +190,10 @@ static std::atomic<int> startup_checks = 2;
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
   delayed_pm_enable();
+
+  // Start the 2-minute countdown (Does nothing if this isn't a fresh OTA)
+  start_ota_rollback_watchdog(120000);
+
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
 
   EspTask<int> display_init_task;
@@ -198,7 +202,7 @@ extern "C" void app_main(void) {
     HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
     HAL::Ssd1306::default_instance().init_lvgl().log_error(TAG, "Failed to init LVGL display");
     show_dongley_test_label();
-    if (--startup_checks == 0) esp_ota_mark_app_valid_cancel_rollback();
+    if (--startup_checks == 0) mark_ota_valid();
   });
 
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
@@ -224,7 +228,7 @@ extern "C" void app_main(void) {
     ntp_is_ready = true;
     clock_task.on_time_synced();
     diagnostics->publish_all();  // Re-publish diagnostics after NTP sync.
-    if (--startup_checks == 0) esp_ota_mark_app_valid_cancel_rollback();
+    if (--startup_checks == 0) mark_ota_valid();
   };
 
   init_and_run_display();
