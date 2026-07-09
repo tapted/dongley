@@ -8,6 +8,7 @@
 
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
+#include "espbase/boot/network_logger.hpp"
 #include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/esp_task.hpp"
 #include "espbase/nvs_store.hpp"
@@ -106,6 +107,10 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
 }  // namespace
 
 void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
+  auto server = install_network_logger_routes(nullptr);
+  if (server) {
+    ESP_LOGI(TAG, "Leaking http server handle for now: %p", *server);
+  }
   esp_mqtt_client_config_t mqtt_cfg = {};
   mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
   mqtt_cfg.credentials.username = "puck1e80";
@@ -192,6 +197,7 @@ void show_dongley_test_label() {
 
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
+  initialize_network_logger();
   delayed_pm_enable();
 
   // Start the 2-minute countdown (Does nothing if this isn't a fresh OTA)
