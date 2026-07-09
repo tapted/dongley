@@ -34,6 +34,11 @@ static volatile bool ntp_is_ready = false;
 static volatile bool got_mqtt_command = false;
 }  // namespace
 
+// We use a static atomic counter to track the number of startup checks that need to complete before
+// marking the app as valid and canceling any rollback. This ensures that both the NTP sync and
+// display initialization have completed successfully before proceeding.
+static std::atomic<int> startup_checks = 3;
+
 class Network : public DefaultNetwork {
  public:
   void network_ready(const esp_netif_ip_info_t& ip_info) override;
@@ -105,7 +110,10 @@ void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
   mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
   mqtt_cfg.credentials.username = "puck1e80";
   mqtt_cfg.credentials.authentication.password = "A9CeSm4MX7tcSMT";
-  dongley_device.begin(mqtt_cfg);
+  if (dongley_device.begin(mqtt_cfg)) {
+    ESP_LOGI(TAG, "MQTT client started successfully");
+    if (--startup_checks == 0) mark_ota_valid();
+  }
 }
 
 EspResult<void> init_and_run_display() {
@@ -181,11 +189,6 @@ void show_dongley_test_label() {
   lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
   lv_obj_center(label);
 }
-
-// We use a static atomic counter to track the number of startup checks that need to complete before
-// marking the app as valid and canceling any rollback. This ensures that both the NTP sync and
-// display initialization have completed successfully before proceeding.
-static std::atomic<int> startup_checks = 2;
 
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
