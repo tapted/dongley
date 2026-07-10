@@ -185,13 +185,34 @@ static void on_crash_loop_threshold() {
   led.refresh();
 }
 
+static lv_obj_t *motd_label = nullptr;
+
+void update_motd(const HAPPY::Entities::Text& entity) {
+  ESP_LOGI(TAG, "Updating MOTD to: %.*s", static_cast<int>(entity.get_value().length()),
+           entity.get_value().data());
+  HAL::Display::Guard lock;
+  if (motd_label) {
+    lv_label_set_text_static(motd_label, entity.get_value().data());
+  }
+}
+
+HAPPY::Entities::Text motd(dongley_device, "motd", "Message of the Day",
+                           {
+                               .icon = "mdi:message-text",
+                               .on_update = update_motd,  
+                           });
+                           
 void show_dongley_test_label() {
   HAL::Display::Guard lock;
-  lv_obj_t* label = lv_label_create(lv_screen_active());
-  lv_label_set_text(label, "Dongley - KPop Demon Hunters Edition!   ");
-  lv_obj_set_width(label, 128);
-  lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-  lv_obj_center(label);
+  motd_label = lv_label_create(lv_screen_active());
+  const char* message = "Dongley - KPop Demon Hunters Edition!    ";
+  if (motd.get_value().length() > 0) {
+    message = motd.get_value().data();
+  }
+  lv_label_set_text_static(motd_label, message);
+  lv_obj_set_width(motd_label, 128);
+  lv_label_set_long_mode(motd_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+  lv_obj_center(motd_label);
 }
 
 extern "C" void app_main(void) {
@@ -229,6 +250,7 @@ extern "C" void app_main(void) {
 
   diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
+  dongley_device.load();  // Load all entities from NVS before starting the network
 
   // Entities must be registered before the network is started so discovery messages are not missed.
   network.start();
