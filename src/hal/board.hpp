@@ -1,6 +1,6 @@
 #pragma once
 
-#include "halpp/config.hpp"
+#include "halpp/config_defaults.hpp"
 
 namespace HAL::board {
 

@@ -1,6 +1,7 @@
 CompileFlags:
   CompilationDatabase: build/
   Remove: [-f*, -m*]
+  Add: [-Wno-c23-extensions]
 
 InlayHints:
   ParameterNames: No

@@ -15,7 +15,6 @@
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/melodies.hpp"
 #include "halpp/buzzer/passive.hpp"
-#include "halpp/config.hpp"
 #include "halpp/display/display.hpp"
 #include "halpp/display/ssd1306.hpp"
 #include "halpp/led_strip/led_strip.hpp"
