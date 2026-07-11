@@ -45,7 +45,7 @@ class Network : public DefaultNetwork {
 };
 
 static constexpr const char* const ALARM_TONES[] = {
-    "acknowledge", "success", "error", "startup", "Jasmine Flower", "Radioactive",
+    "Off", "acknowledge", "success", "error", "startup", "Jasmine Flower", "Radioactive",
 };
 
 static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
@@ -66,20 +66,28 @@ static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
   }
 }
 
-static HAPPY::Entities::AlarmController* alarm1 = nullptr;
+constexpr size_t MAX_ALARMS = 3;
+static HAPPY::Entities::AlarmController* alarms[MAX_ALARMS] = {};
 static HAPPY::Entities::SystemDiagnostics* diagnostics = nullptr;
 static HAPPY::Entities::OtaController* ota_controller = nullptr;
 
+namespace {
+
 static void on_alarm(size_t index) {
-  if (alarm1 && index == 1) {
-    trigger_alarm(*alarm1);
+  if (index < MAX_ALARMS && alarms[index]) {
+    trigger_alarm(*alarms[index]);
   }
 }
 
-namespace {
-constinit Network network;
 constinit ClockTask clock_task(on_alarm);
 
+static void alarm_changed(const HAPPY::Entities::AlarmController& alarm) {
+  clock_task.set_alarm(alarm.id, alarm.time().hour(), alarm.time().minute(), alarm.time().second());
+  ESP_LOGI(TAG, "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id, alarm.time().hour(),
+           alarm.time().minute(), alarm.time().second(), alarm.selected_tone().data());
+}
+
+constinit Network network;
 constinit HAPPY::Transports::MqttDevice dongley_device({
     .identifiers = "dongley_v1_001",
     .name = "Dongley",
@@ -185,7 +193,7 @@ static void on_crash_loop_threshold() {
   led.refresh();
 }
 
-static lv_obj_t *motd_label = nullptr;
+static lv_obj_t* motd_label = nullptr;
 
 void update_motd(const HAPPY::Entities::Text& entity) {
   ESP_LOGI(TAG, "Updating MOTD to: %.*s", static_cast<int>(entity.get_value().length()),
@@ -199,9 +207,9 @@ void update_motd(const HAPPY::Entities::Text& entity) {
 HAPPY::Entities::Text motd(dongley_device, "motd", "Message of the Day",
                            {
                                .icon = "mdi:message-text",
-                               .on_update = update_motd,  
+                               .on_update = update_motd,
                            });
-                           
+
 void show_dongley_test_label() {
   HAL::Display::Guard lock;
   motd_label = lv_label_create(lv_screen_active());
@@ -237,16 +245,11 @@ extern "C" void app_main(void) {
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
       .log_error(TAG, "Failed to init default LED");
 
-  alarm1 = new HAPPY::Entities::AlarmController(
-      dongley_device, 1, ALARM_TONES,
-      [](const HAPPY::Entities::AlarmController& alarm) {
-        clock_task.set_alarm(alarm.id, alarm.time().hour(), alarm.time().minute(),
-                             alarm.time().second());
-        ESP_LOGI(TAG, "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id,
-                 alarm.time().hour(), alarm.time().minute(), alarm.time().second(),
-                 alarm.selected_tone().data());
-      },
-      trigger_alarm);
+  for (size_t i = 0; i < MAX_ALARMS; ++i) {
+    using HAPPY::Entities::AlarmController;
+    alarms[i] =
+        new AlarmController(dongley_device, i + 1, ALARM_TONES, alarm_changed, trigger_alarm);
+  }
 
   diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
