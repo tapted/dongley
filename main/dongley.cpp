@@ -45,24 +45,41 @@ class Network : public DefaultNetwork {
 };
 
 static constexpr const char* const ALARM_TONES[] = {
-    "Off", "acknowledge", "success", "error", "startup", "Jasmine Flower", "Radioactive",
+    "Off",           "acknowledge", "success", "error",       "startup",          "Jasmine Flower",
+    "Radioactive",   "Shanty",      "Chord",   "Korobeiniki", "Korobeiniki Riff", "Ambient",
+    "Factory Drone", "Shanty Extended",
+};
+
+static constexpr std::span<const HAL::Note> ALARM_TONE_MELODIES[] = {
+    {},
+    HAL::beeps::acknowledge,
+    HAL::beeps::success,
+    HAL::beeps::error,
+    HAL::beeps::startup,
+    HAL::melodies::mo_li_hua,
+    HAL::melodies::radioactive_riff,
+    HAL::melodies::shanty_riff,
+    HAL::melodies::limit_test_chord,
+    HAL::melodies::korobeiniki,
+    HAL::melodies::korobeiniki_riff,
+    HAL::melodies::ambient_sequence,
+    HAL::melodies::factory_drone,
+    HAL::melodies::shanty_riff_extended,
 };
 
 static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
   const auto tone = alarm.selected_tone();
-  ESP_LOGI(TAG, "Alarm %d triggered!", alarm.id);
-  if (tone == "acknowledge") {
-    HAL::Passive::default_instance().play(HAL::beeps::acknowledge);
-  } else if (tone == "success") {
-    HAL::Passive::default_instance().play(HAL::beeps::success);
-  } else if (tone == "error") {
-    HAL::Passive::default_instance().play(HAL::beeps::error);
-  } else if (tone == "startup") {
-    HAL::Passive::default_instance().play(HAL::beeps::startup);
-  } else if (tone == "Jasmine Flower") {
-    HAL::Passive::default_instance().play(HAL::melodies::mo_li_hua);
-  } else if (tone == "Radioactive") {
-    HAL::Passive::default_instance().play(HAL::melodies::radioactive_riff);
+  ESP_LOGI(TAG, "Alarm %d triggered (%s)!", alarm.id, tone.data());
+  for (size_t i = 0; i < sizeof(ALARM_TONES) / sizeof(ALARM_TONES[0]); ++i) {
+    if (tone == ALARM_TONES[i]) {
+      if (i == 0) {
+        ESP_LOGI(TAG, "Alarm %d is set to 'Off', no tone will be played.", alarm.id);
+        return;
+      }
+      ESP_LOGI(TAG, "Playing tone: %s (index: %zu)", ALARM_TONES[i], i);
+      HAL::Passive::default_instance().play(ALARM_TONE_MELODIES[i]);
+      return;
+    }
   }
 }
 
