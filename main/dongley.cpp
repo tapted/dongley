@@ -45,8 +45,9 @@ class Network : public DefaultNetwork {
 };
 
 static constexpr const char* const ALARM_TONES[] = {
-    "Off",           "acknowledge", "success", "error",       "startup",          "Jasmine Flower",
-    "Radioactive",   "Shanty",      "Chord",   "Korobeiniki", "Korobeiniki Riff", "Ambient",
+    "Off",           "acknowledge",     "success",          "error",
+    "startup",       "Jasmine Flower",  "Radioactive",      "Shanty",
+    "Chord",         "Korobeiniki",     "Korobeiniki Riff", "Ambient",
     "Factory Drone", "Shanty Extended",
 };
 
@@ -91,6 +92,7 @@ static HAPPY::Entities::OtaController* ota_controller = nullptr;
 namespace {
 
 static void on_alarm(size_t index) {
+  ESP_LOGI(TAG, "Alarm %zu triggered!", index);
   if (index < MAX_ALARMS && alarms[index]) {
     trigger_alarm(*alarms[index]);
   }
@@ -99,9 +101,13 @@ static void on_alarm(size_t index) {
 constinit ClockTask clock_task(on_alarm);
 
 static void alarm_changed(const HAPPY::Entities::AlarmController& alarm) {
-  clock_task.set_alarm(alarm.id, alarm.time().hour(), alarm.time().minute(), alarm.time().second());
-  ESP_LOGI(TAG, "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id, alarm.time().hour(),
-           alarm.time().minute(), alarm.time().second(), alarm.selected_tone().data());
+  for (size_t i = 0; i < MAX_ALARMS; ++i) {
+    if (alarms[i] != &alarm) continue;
+
+    clock_task.set_alarm(i, alarm.time().hour(), alarm.time().minute(), alarm.time().second());
+    ESP_LOGI(TAG, "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id, alarm.time().hour(),
+             alarm.time().minute(), alarm.time().second(), alarm.selected_tone().data());
+  }
 }
 
 constinit Network network;
