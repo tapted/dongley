@@ -6,6 +6,7 @@
 #include <lvgl.h>
 #include <soc/gpio_num.h>
 
+#include "alarm_clock.hpp"
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
 #include "espbase/boot/network_logger.hpp"
@@ -13,15 +14,12 @@
 #include "espbase/esp_task.hpp"
 #include "espbase/nvs_store.hpp"
 #include "halpp/buzzer/beeps.hpp"
-#include "halpp/buzzer/melodies.hpp"
 #include "halpp/buzzer/passive.hpp"
 #include "halpp/display/display.hpp"
 #include "halpp/display/ssd1306.hpp"
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
-#include "halpp/segmented/clock_task.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
-#include "happy/entities/alarm.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/ota.hpp"
 #include "happy/entities/system_diagnostics.hpp"
@@ -44,71 +42,11 @@ class Network : public DefaultNetwork {
   void network_ready(const esp_netif_ip_info_t& ip_info) override;
 };
 
-static constexpr const char* const ALARM_TONES[] = {
-    "Off",           "acknowledge",     "success",          "error",
-    "startup",       "Jasmine Flower",  "Radioactive",      "Shanty",
-    "Chord",         "Korobeiniki",     "Korobeiniki Riff", "Ambient",
-    "Factory Drone", "Shanty Extended",
-};
-
-static constexpr std::span<const HAL::Note> ALARM_TONE_MELODIES[] = {
-    {},
-    HAL::beeps::acknowledge,
-    HAL::beeps::success,
-    HAL::beeps::error,
-    HAL::beeps::startup,
-    HAL::melodies::mo_li_hua,
-    HAL::melodies::radioactive_riff,
-    HAL::melodies::shanty_riff,
-    HAL::melodies::limit_test_chord,
-    HAL::melodies::korobeiniki,
-    HAL::melodies::korobeiniki_riff,
-    HAL::melodies::ambient_sequence,
-    HAL::melodies::factory_drone,
-    HAL::melodies::shanty_riff_extended,
-};
-
-static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
-  const auto tone = alarm.selected_tone();
-  ESP_LOGI(TAG, "Alarm %d triggered (%s)!", alarm.id, tone.data());
-  for (size_t i = 0; i < sizeof(ALARM_TONES) / sizeof(ALARM_TONES[0]); ++i) {
-    if (tone == ALARM_TONES[i]) {
-      if (i == 0) {
-        ESP_LOGI(TAG, "Alarm %d is set to 'Off', no tone will be played.", alarm.id);
-        return;
-      }
-      ESP_LOGI(TAG, "Playing tone: %s (index: %zu)", ALARM_TONES[i], i);
-      HAL::Passive::default_instance().play(ALARM_TONE_MELODIES[i]);
-      return;
-    }
-  }
-}
-
-constexpr size_t MAX_ALARMS = 3;
-static HAPPY::Entities::AlarmController* alarms[MAX_ALARMS] = {};
+static constinit AlarmClock<3> alarms;
 static HAPPY::Entities::SystemDiagnostics* diagnostics = nullptr;
 static HAPPY::Entities::OtaController* ota_controller = nullptr;
 
 namespace {
-
-static void on_alarm(size_t index) {
-  ESP_LOGI(TAG, "Alarm %zu triggered!", index);
-  if (index < MAX_ALARMS && alarms[index]) {
-    trigger_alarm(*alarms[index]);
-  }
-}
-
-constinit ClockTask clock_task(on_alarm);
-
-static void alarm_changed(const HAPPY::Entities::AlarmController& alarm) {
-  for (size_t i = 0; i < MAX_ALARMS; ++i) {
-    if (alarms[i] != &alarm) continue;
-
-    clock_task.set_alarm(i, alarm.time().hour(), alarm.time().minute(), alarm.time().second());
-    ESP_LOGI(TAG, "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id, alarm.time().hour(),
-             alarm.time().minute(), alarm.time().second(), alarm.selected_tone().data());
-  }
-}
 
 constinit Network network;
 constinit HAPPY::Transports::MqttDevice dongley_device({
@@ -268,11 +206,7 @@ extern "C" void app_main(void) {
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
       .log_error(TAG, "Failed to init default LED");
 
-  for (size_t i = 0; i < MAX_ALARMS; ++i) {
-    using HAPPY::Entities::AlarmController;
-    alarms[i] =
-        new AlarmController(dongley_device, i + 1, ALARM_TONES, alarm_changed, trigger_alarm);
-  }
+  alarms.init(dongley_device);
 
   diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
@@ -282,7 +216,7 @@ extern "C" void app_main(void) {
   network.start();
   network.time_sync_callback = [](struct timeval* /*tv*/) {
     ntp_is_ready = true;
-    clock_task.on_time_synced();
+    AlarmClockBase::on_time_synced();
     diagnostics->publish_all();  // Re-publish diagnostics after NTP sync.
     if (--startup_checks == 0) mark_ota_valid();
   };
