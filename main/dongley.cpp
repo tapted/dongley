@@ -9,8 +9,8 @@
 #include "alarm_clock.hpp"
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
-#include "espbase/boot/network_logger.hpp"
 #include "espbase/boot/favicon_route.hpp"
+#include "espbase/boot/network_logger.hpp"
 #include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/esp_task.hpp"
 #include "espbase/nvs_store.hpp"
@@ -83,6 +83,8 @@ void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
   }
   esp_mqtt_client_config_t mqtt_cfg = {};
   mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
+  // Cap the outbox to 4KB. If it fills up, enqueue will fail safely instead of OOMing.
+  mqtt_cfg.outbox.limit = 4096;
   mqtt_cfg.credentials.username = "puck1e80";
   mqtt_cfg.credentials.authentication.password = "A9CeSm4MX7tcSMT";
   if (dongley_device.begin(mqtt_cfg)) {
@@ -219,8 +221,12 @@ extern "C" void app_main(void) {
   network.time_sync_callback = [](struct timeval* /*tv*/) {
     ntp_is_ready = true;
     AlarmClockBase::on_time_synced();
-    diagnostics->publish_all();  // Re-publish diagnostics after NTP sync.
     if (--startup_checks == 0) mark_ota_valid();
+    diagnostics->publish_all();
+
+    network.time_sync_callback = [](struct timeval* /*tv*/) {
+      diagnostics->publish_all();  // Re-publish diagnostics after each NTP sync.
+    };
   };
 
   init_and_run_display();
