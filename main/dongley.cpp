@@ -83,8 +83,8 @@ void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
   }
   esp_mqtt_client_config_t mqtt_cfg = {};
   mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
-  // Cap the outbox to 4KB. If it fills up, enqueue will fail safely instead of OOMing.
-  mqtt_cfg.outbox.limit = 4096;
+  // Cap the outbox to 16KB. If it fills up, enqueue will fail safely instead of OOMing.
+  mqtt_cfg.outbox.limit = 16384;
   mqtt_cfg.credentials.username = "puck1e80";
   mqtt_cfg.credentials.authentication.password = "A9CeSm4MX7tcSMT";
   if (dongley_device.begin(mqtt_cfg)) {

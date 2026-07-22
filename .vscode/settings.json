@@ -10,7 +10,7 @@
     "--query-driver=**",
     "--compile-commands-dir=c:\\Users\\tapte\\dev\\dongley\\build"
   ],
-  "idf.portWin": "COM15",
+  "idf.portWin": "COM22",
   "idf.flashType": "UART",
   "idf.currentSetup": "C:\\esp\\v6.0.1\\esp-idf",
 }
