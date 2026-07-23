@@ -39,6 +39,8 @@ static volatile bool got_mqtt_command = false;
 static std::atomic<int> startup_checks = 3;
 
 class Network : public DefaultNetwork {
+  httpd_handle_t server_ = nullptr;
+
  public:
   void network_ready(const esp_netif_ip_info_t& ip_info) override;
 };
@@ -76,10 +78,15 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
 }  // namespace
 
 void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
+  if (server_) {
+    ESP_LOGI(TAG, "Network::network_ready() called multiple times, ignoring.");
+    return;
+  }
   auto server = install_network_logger_routes(nullptr);
   if (server) {
-    install_favicon_route(*server);
-    ESP_LOGI(TAG, "Leaking http server handle for now: %p", *server);
+    server_ = *server;
+    install_favicon_route(server_);
+    ESP_LOGI(TAG, "Network logger HTTP server started successfully.");
   }
   esp_mqtt_client_config_t mqtt_cfg = {};
   mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
