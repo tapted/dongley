@@ -35,14 +35,14 @@ static AlarmClockBase* instance_ = nullptr;
 
 static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
   const auto tone = alarm.selected_tone();
-  ESP_LOGI("AlarmClock", "Alarm %d triggered (%s)!", alarm.id, tone.data());
+  ESP_LOGD("AlarmClock", "Alarm Id %d triggered (%s)!", alarm.id, tone.data());
   for (size_t i = 0; i < sizeof(ALARM_TONES) / sizeof(ALARM_TONES[0]); ++i) {
     if (tone == ALARM_TONES[i]) {
       if (i == 0) {
         ESP_LOGI("AlarmClock", "Alarm %d is set to 'Off', no tone will be played.", alarm.id);
         return;
       }
-      ESP_LOGI("AlarmClock", "Playing tone: %s (index: %zu)", ALARM_TONES[i], i);
+      ESP_LOGI("AlarmClock", "Alarm Id %d: Playing tone: %s (id:%zu)", alarm.id, ALARM_TONES[i], i);
       HAL::Passive::default_instance().play(ALARM_TONE_MELODIES[i]);
       return;
     }
@@ -68,7 +68,6 @@ void AlarmClockBase::on_time_synced() {
 void AlarmClockBase::on_alarm(size_t index) {
   if (!instance_) return;
 
-  ESP_LOGI("AlarmClock", "Alarm %zu triggered!", index);
   if (index < instance_->max_alarms_ && instance_->alarms_[index]) {
     trigger_alarm(*instance_->alarms_[index]);
   }
