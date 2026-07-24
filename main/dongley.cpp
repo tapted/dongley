@@ -13,6 +13,7 @@
 #include "espbase/boot/network_logger.hpp"
 #include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/esp_task.hpp"
+#include "espbase/json.hpp"
 #include "espbase/nvs_store.hpp"
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/passive.hpp"
@@ -204,6 +205,7 @@ extern "C" void app_main(void) {
   start_ota_rollback_watchdog(120000);
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
+  init_json_to_use_psram();
 
   EspTask<int> display_init_task;
   display_init_task.start({.core_id = 1}, 0, [](auto&) {
