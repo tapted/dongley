@@ -14,6 +14,7 @@
 #include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/esp_task.hpp"
 #include "espbase/json.hpp"
+#include "espbase/main_loop.hpp"
 #include "espbase/nvs_store.hpp"
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/passive.hpp"
@@ -239,6 +240,9 @@ extern "C" void app_main(void) {
   };
 
   init_and_run_display();
+
+  ESP_LOGI(TAG, "Starting main loop...");
+  main_loop.run_forever();
 
   ESP_LOGI(TAG, "Starting Rainbow LED cycle. got_mqtt_command=%d", got_mqtt_command);
 
