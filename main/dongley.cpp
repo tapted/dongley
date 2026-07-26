@@ -81,24 +81,23 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
 
 static constinit HAPPY::Sensors::DhtSensorReader dht_reader(GPIO_NUM_16,
                                                             HAPPY::Sensors::DHTType::DHT11);
-static constinit HAPPY::Entities::SensorState<int16_t> temp_state(
-    []() -> bool { return dht_reader.update(); }, []() -> int16_t { return dht_reader.get_temp(); },
+                                                            
+static HAPPY::Entities::StatefulSensor<int16_t> temp_entity(
+    dongley_device, "dht11_temp", "DHT11 Temperature",
+    {
+        .device_class = "temperature",
+        .unit_of_measurement = "°C",
+    },
+    dht_reader, []() -> int16_t { return dht_reader.get_temp(); }, HAPPY::Entities::format_tenths);
+
+static HAPPY::Entities::StatefulSensor<int16_t> hum_entity(
+    dongley_device, "dht11_hum", "DHT11 Humidity",
+    {
+        .device_class = "humidity",
+        .unit_of_measurement = "%",
+    },
+    dht_reader, []() -> int16_t { return dht_reader.get_humidity(); },
     HAPPY::Entities::format_tenths);
-static constinit HAPPY::Entities::SensorState<int16_t> hum_state(
-    []() -> bool { return dht_reader.update(); },
-    []() -> int16_t { return dht_reader.get_humidity(); }, HAPPY::Entities::format_tenths);
-static HAPPY::Entities::LazySensor temp_entity(dongley_device, "dht11_temp", "DHT11 Temperature",
-                                               {
-                                                   .device_class = "temperature",
-                                                   .unit_of_measurement = "°C",
-                                               },
-                                               &temp_state);
-static HAPPY::Entities::LazySensor hum_entity(dongley_device, "dht11_hum", "DHT11 Humidity",
-                                              {
-                                                  .device_class = "humidity",
-                                                  .unit_of_measurement = "%",
-                                              },
-                                              &hum_state);
 
 }  // namespace
 
