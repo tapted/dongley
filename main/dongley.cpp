@@ -23,9 +23,11 @@
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
+#include "happy/entities//lazy_sensor.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/ota.hpp"
 #include "happy/entities/system_diagnostics.hpp"
+#include "happy/sensors/dht_sensor.hpp"
 #include "happy/transports/mqtt_device.hpp"
 
 namespace {
@@ -76,6 +78,27 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
                                        .supports_rgb = true,
                                        .on_update = on_light_update,
                                    });
+
+static constinit HAPPY::Sensors::DhtSensorReader dht_reader(GPIO_NUM_16,
+                                                            HAPPY::Sensors::DHTType::DHT11);
+static constinit HAPPY::Entities::SensorState<int16_t> temp_state(
+    []() -> bool { return dht_reader.update(); }, []() -> int16_t { return dht_reader.get_temp(); },
+    HAPPY::Entities::format_tenths);
+static constinit HAPPY::Entities::SensorState<int16_t> hum_state(
+    []() -> bool { return dht_reader.update(); },
+    []() -> int16_t { return dht_reader.get_humidity(); }, HAPPY::Entities::format_tenths);
+static HAPPY::Entities::LazySensor temp_entity(dongley_device, "dht11_temp", "DHT11 Temperature",
+                                               {
+                                                   .device_class = "temperature",
+                                                   .unit_of_measurement = "°C",
+                                               },
+                                               &temp_state);
+static HAPPY::Entities::LazySensor hum_entity(dongley_device, "dht11_hum", "DHT11 Humidity",
+                                              {
+                                                  .device_class = "humidity",
+                                                  .unit_of_measurement = "%",
+                                              },
+                                              &hum_state);
 
 }  // namespace
 
@@ -236,6 +259,10 @@ extern "C" void app_main(void) {
 
     network.time_sync_callback = [](struct timeval* /*tv*/) {
       diagnostics->publish_all();  // Re-publish diagnostics after each NTP sync.
+
+      // Start poking temp/humidity sensors. They fail to read early after boot.
+      temp_entity.refresh_and_maybe_publish();
+      hum_entity.refresh_and_maybe_publish();
     };
   };
 
