@@ -260,8 +260,8 @@ extern "C" void app_main(void) {
       diagnostics->publish_all();  // Re-publish diagnostics after each NTP sync.
 
       // Start poking temp/humidity sensors. They fail to read early after boot.
-      temp_entity.refresh_and_maybe_publish();
-      hum_entity.refresh_and_maybe_publish();
+      temp_entity.publish_if_changed();
+      hum_entity.publish_if_changed();
     };
   };
 
