@@ -81,7 +81,7 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
 
 static constinit HAPPY::Sensors::DhtSensorReader dht_reader(GPIO_NUM_16,
                                                             HAPPY::Sensors::DHTType::DHT11);
-                                                            
+
 static HAPPY::Entities::StatefulSensor<int16_t> temp_entity(
     dongley_device, "dht11_temp", "DHT11 Temperature",
     {
@@ -138,18 +138,18 @@ EspResult<void> init_and_run_display() {
   }
   HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
 
-  // 5. Write to the local buffer using the modern C++ formatters
-  // display.print_float(42.69, 2);
-
-  vTaskDelay(pdMS_TO_TICKS(500));
-  // buzzer.play(HAL::melodies::mo_li_hua);
-
   uint32_t i = 0;
   uint32_t divisor = 1;
   uint32_t delay_ms = 10;
   uint32_t next_threshold = 10000;
+  bool first_loop = true;
+  bool network_start_called = false;
 
   while (true) {
+    if (!first_loop && !network_start_called) {
+      network.start();
+      network_start_called = true;
+    }
     // When we cross the threshold, scale our units by 10
     if (i >= next_threshold) {
       divisor *= 10;
@@ -164,6 +164,9 @@ EspResult<void> init_and_run_display() {
     display.print_number(i / divisor);
 
     if (EspError err = display.write_display()) {
+      // Ensure network is started even if display fails
+      if (!network_start_called) network.start();
+
       return err.log(TAG, "Failed to write 7-segment display");
     }
 
@@ -176,6 +179,7 @@ EspResult<void> init_and_run_display() {
     if (ntp_is_ready) {
       break;
     }
+    first_loop = false;
   }
   return ESP_OK;
 }
@@ -248,8 +252,6 @@ extern "C" void app_main(void) {
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
   dongley_device.load();  // Load all entities from NVS before starting the network
 
-  // Entities must be registered before the network is started so discovery messages are not missed.
-  network.start();
   network.time_sync_callback = [](struct timeval* /*tv*/) {
     ntp_is_ready = true;
     AlarmClockBase::on_time_synced();
@@ -265,27 +267,11 @@ extern "C" void app_main(void) {
     };
   };
 
+  // Entities must be registered before the network is started so discovery messages are not missed.
+  // We delay network.start() until the loop has iterated once so that the code is cached, and not
+  // stalled while the wifi stack pulls calibration data from flash.
   init_and_run_display();
 
   ESP_LOGI(TAG, "Starting main loop...");
   main_loop.run_forever();
-
-  ESP_LOGI(TAG, "Starting Rainbow LED cycle. got_mqtt_command=%d", got_mqtt_command);
-
-  HAL::LedStrip& led = HAL::LedStrip::default_instance();
-  uint16_t hue = 0;
-  while (true) {
-    if (!got_mqtt_command) {
-      // hue: 0-359, sat: 0-255, val: 0-255
-      // Value (brightness) is kept low at 20 to prevent blinding glare and high current draw
-      led.set_pixel_hsv(0, hue, 255, 20).log_error(TAG, "Failed to set LED color");
-      led.refresh().log_error(TAG, "Failed to refresh LED");
-
-      hue = (hue + 1) % 360;
-    }
-
-    // 10ms delay yields approximately a 3.6-second rainbow cycle
-    // vTaskDelay(pdMS_TO_TICKS(10));
-    vTaskDelay(pdMS_TO_TICKS(1000));
-  }
 }
