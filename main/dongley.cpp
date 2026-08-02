@@ -121,7 +121,7 @@ static HAPPY::Entities::StatefulSensor<int16_t> hum22_entity(
     dht22_reader, []() -> int16_t { return dht22_reader.get_humidity(); },
     HAPPY::Entities::format_tenths);
 
-static constinit halpp::gpio::DebouncedInput light_hw_input;
+static constinit halpp::gpio::DebouncedInput light_hw_input(GPIO_NUM_5);
 static constexpr HAPPY::Entities::Sensor::Config ambient_light_sensor_config = {
     .icon = "mdi:theme-light-dark",
     .get_value = [](void*) -> std::string { return light_hw_input.get_level() ? "light" : "dark"; },
@@ -307,7 +307,6 @@ extern "C" void app_main(void) {
   };
 
   light_hw_input.begin({
-      .pin = GPIO_NUM_5,
       .on_changed =
           [](bool, void*) {
             main_loop.push<&HAPPY::Entities::Sensor::request_publish>(&ambient_light_sensor);
