@@ -20,6 +20,7 @@
 #include "halpp/buzzer/passive.hpp"
 #include "halpp/display/display.hpp"
 #include "halpp/display/ssd1306.hpp"
+#include "halpp/gpio/debounced_input.hpp"
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
@@ -119,6 +120,14 @@ static HAPPY::Entities::StatefulSensor<int16_t> hum22_entity(
     },
     dht22_reader, []() -> int16_t { return dht22_reader.get_humidity(); },
     HAPPY::Entities::format_tenths);
+
+static constinit halpp::gpio::DebouncedInput light_hw_input;
+static constexpr HAPPY::Entities::Sensor::Config ambient_light_sensor_config = {
+    .icon = "mdi:theme-light-dark",
+    .get_value = [](void*) -> std::string { return light_hw_input.get_level() ? "light" : "dark"; },
+};
+HAPPY::Entities::Sensor ambient_light_sensor(dongley_device, "ambient_light", "Ambient Light Level",
+                                             ambient_light_sensor_config);
 
 }  // namespace
 
@@ -296,6 +305,14 @@ extern "C" void app_main(void) {
       hum22_entity.publish_if_changed();
     };
   };
+
+  light_hw_input.begin({
+      .pin = GPIO_NUM_5,
+      .on_changed =
+          [](bool, void*) {
+            main_loop.push<&HAPPY::Entities::Sensor::request_publish>(&ambient_light_sensor);
+          },
+  });
 
   // Entities must be registered before the network is started so discovery messages are not missed.
   // We delay network.start() until the loop has iterated once so that the code is cached, and not
