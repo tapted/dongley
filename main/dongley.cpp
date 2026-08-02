@@ -79,24 +79,45 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
                                        .on_update = on_light_update,
                                    });
 
-static constinit HAPPY::Sensors::DhtSensorReader dht_reader(GPIO_NUM_16,
-                                                            HAPPY::Sensors::DHTType::DHT11);
+static constinit HAPPY::Sensors::DhtSensorReader dht11_reader(GPIO_NUM_16,
+                                                              HAPPY::Sensors::DHTType::DHT11);
+static constinit HAPPY::Sensors::DhtSensorReader dht22_reader(GPIO_NUM_4,
+                                                              HAPPY::Sensors::DHTType::AM2301);
 
-static HAPPY::Entities::StatefulSensor<int16_t> temp_entity(
+static HAPPY::Entities::StatefulSensor<int16_t> temp11_entity(
     dongley_device, "dht11_temp", "DHT11 Temperature",
     {
         .device_class = "temperature",
         .unit_of_measurement = "°C",
     },
-    dht_reader, []() -> int16_t { return dht_reader.get_temp(); }, HAPPY::Entities::format_tenths);
+    dht11_reader, []() -> int16_t { return dht11_reader.get_temp(); },
+    HAPPY::Entities::format_tenths);
 
-static HAPPY::Entities::StatefulSensor<int16_t> hum_entity(
+static HAPPY::Entities::StatefulSensor<int16_t> hum11_entity(
     dongley_device, "dht11_hum", "DHT11 Humidity",
     {
         .device_class = "humidity",
         .unit_of_measurement = "%",
     },
-    dht_reader, []() -> int16_t { return dht_reader.get_humidity(); },
+    dht11_reader, []() -> int16_t { return dht11_reader.get_humidity(); },
+    HAPPY::Entities::format_tenths);
+
+static HAPPY::Entities::StatefulSensor<int16_t> temp22_entity(
+    dongley_device, "dht22_temp", "DHT22 Temperature",
+    {
+        .device_class = "temperature",
+        .unit_of_measurement = "°C",
+    },
+    dht22_reader, []() -> int16_t { return dht22_reader.get_temp(); },
+    HAPPY::Entities::format_tenths);
+
+static HAPPY::Entities::StatefulSensor<int16_t> hum22_entity(
+    dongley_device, "dht22_hum", "DHT22 Humidity",
+    {
+        .device_class = "humidity",
+        .unit_of_measurement = "%",
+    },
+    dht22_reader, []() -> int16_t { return dht22_reader.get_humidity(); },
     HAPPY::Entities::format_tenths);
 
 }  // namespace
@@ -250,6 +271,9 @@ extern "C" void app_main(void) {
 
   diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
+
+  gpio_set_direction(GPIO_NUM_5, GPIO_MODE_INPUT);  // Photoresistor.
+
   dongley_device.load();  // Load all entities from NVS before starting the network
 
   network.time_sync_callback = [](struct timeval* /*tv*/) {
@@ -258,12 +282,18 @@ extern "C" void app_main(void) {
     if (--startup_checks == 0) mark_ota_valid();
     diagnostics->publish_all();
 
+    // DHT11 takes longer to boot up - it usually fails if we try to read it here.
+    temp22_entity.publish_if_changed();
+    hum22_entity.publish_if_changed();
+
     network.time_sync_callback = [](struct timeval* /*tv*/) {
       diagnostics->publish_all();  // Re-publish diagnostics after each NTP sync.
 
-      // Start poking temp/humidity sensors. They fail to read early after boot.
-      temp_entity.publish_if_changed();
-      hum_entity.publish_if_changed();
+      // Continue poking temp/humidity sensors.
+      temp11_entity.publish_if_changed();
+      hum11_entity.publish_if_changed();
+      temp22_entity.publish_if_changed();
+      hum22_entity.publish_if_changed();
     };
   };
 
