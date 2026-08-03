@@ -3,39 +3,32 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <lvgl.h>
 #include <soc/gpio_num.h>
 
 #include "alarm_clock.hpp"
+#include "dongley_device.hpp"
+#include "dongley_sensors.hpp"
+#include "dongley_display.hpp"
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
 #include "espbase/boot/favicon_route.hpp"
 #include "espbase/boot/network_logger.hpp"
 #include "espbase/boot/ota_rollback_watchdog.hpp"
-#include "espbase/esp_task.hpp"
 #include "espbase/json.hpp"
 #include "espbase/main_loop.hpp"
 #include "espbase/nvs_store.hpp"
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/passive.hpp"
-#include "halpp/display/display.hpp"
-#include "halpp/display/ssd1306.hpp"
-#include "halpp/gpio/debounced_input.hpp"
 #include "halpp/led_strip/led_strip.hpp"
 #include "halpp/network/default_network.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
-#include "happy/entities//lazy_sensor.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/ota.hpp"
-#include "happy/entities/system_diagnostics.hpp"
-#include "happy/sensors/dht_sensor.hpp"
-#include "happy/transports/mqtt_device.hpp"
 
 namespace {
 static constexpr char TAG[] = "dongley";
 static constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
 static volatile bool ntp_is_ready = false;
-static volatile bool got_mqtt_command = false;
 }  // namespace
 
 // We use a static atomic counter to track the number of startup checks that need to complete before
@@ -51,22 +44,13 @@ class Network : public DefaultNetwork {
 };
 
 static constinit AlarmClock<3> alarms;
-static HAPPY::Entities::SystemDiagnostics* diagnostics = nullptr;
 static HAPPY::Entities::OtaController* ota_controller = nullptr;
 
 namespace {
 
 constinit Network network;
-constinit HAPPY::Transports::MqttDevice dongley_device({
-    .identifiers = "dongley_v1_001",
-    .name = "Dongley",
-    .manufacturer = "Custom",
-    .model = "ESP32-S3 WROOM-1 DevKit",
-    .sw_version = "0.1",  // esp_app_get_description()->version
-});
 
 void on_light_update(const HAPPY::Entities::Light& light) {
-  got_mqtt_command = true;
   auto& strip = HAL::LedStrip::default_instance();
   auto [r, g, b] = light.scaled_rgb();
 
@@ -79,55 +63,6 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
                                        .supports_rgb = true,
                                        .on_update = on_light_update,
                                    });
-
-static constinit HAPPY::Sensors::DhtSensorReader dht11_reader(GPIO_NUM_16,
-                                                              HAPPY::Sensors::DHTType::DHT11);
-static constinit HAPPY::Sensors::DhtSensorReader dht22_reader(GPIO_NUM_4,
-                                                              HAPPY::Sensors::DHTType::AM2301);
-
-static HAPPY::Entities::StatefulSensor<int16_t> temp11_entity(
-    dongley_device, "dht11_temp", "DHT11 Temperature",
-    {
-        .device_class = "temperature",
-        .unit_of_measurement = "°C",
-    },
-    dht11_reader, []() -> int16_t { return dht11_reader.get_temp(); },
-    HAPPY::Entities::format_tenths);
-
-static HAPPY::Entities::StatefulSensor<int16_t> hum11_entity(
-    dongley_device, "dht11_hum", "DHT11 Humidity",
-    {
-        .device_class = "humidity",
-        .unit_of_measurement = "%",
-    },
-    dht11_reader, []() -> int16_t { return dht11_reader.get_humidity(); },
-    HAPPY::Entities::format_tenths);
-
-static HAPPY::Entities::StatefulSensor<int16_t> temp22_entity(
-    dongley_device, "dht22_temp", "DHT22 Temperature",
-    {
-        .device_class = "temperature",
-        .unit_of_measurement = "°C",
-    },
-    dht22_reader, []() -> int16_t { return dht22_reader.get_temp(); },
-    HAPPY::Entities::format_tenths);
-
-static HAPPY::Entities::StatefulSensor<int16_t> hum22_entity(
-    dongley_device, "dht22_hum", "DHT22 Humidity",
-    {
-        .device_class = "humidity",
-        .unit_of_measurement = "%",
-    },
-    dht22_reader, []() -> int16_t { return dht22_reader.get_humidity(); },
-    HAPPY::Entities::format_tenths);
-
-static constinit halpp::gpio::DebouncedInput light_hw_input(GPIO_NUM_5);
-static constexpr HAPPY::Entities::Sensor::Config ambient_light_sensor_config = {
-    .icon = "mdi:theme-light-dark",
-    .get_value = [](void*) -> std::string { return light_hw_input.get_level() ? "light" : "dark"; },
-};
-HAPPY::Entities::Sensor ambient_light_sensor(dongley_device, "ambient_light", "Ambient Light Level",
-                                             ambient_light_sensor_config);
 
 }  // namespace
 
@@ -142,13 +77,7 @@ void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
     install_favicon_route(server_);
     ESP_LOGI(TAG, "Network logger HTTP server started successfully.");
   }
-  esp_mqtt_client_config_t mqtt_cfg = {};
-  mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
-  // Cap the outbox to 16KB. If it fills up, enqueue will fail safely instead of OOMing.
-  mqtt_cfg.outbox.limit = 16384;
-  mqtt_cfg.credentials.username = "puck1e80";
-  mqtt_cfg.credentials.authentication.password = "A9CeSm4MX7tcSMT";
-  if (dongley_device.begin(mqtt_cfg)) {
+  if (dongley_device_begin()) {
     ESP_LOGI(TAG, "MQTT client started successfully");
     if (--startup_checks == 0) mark_ota_valid();
   }
@@ -223,36 +152,6 @@ static void on_crash_loop_threshold() {
   led.refresh();
 }
 
-static lv_obj_t* motd_label = nullptr;
-
-void update_motd(const HAPPY::Entities::Text& entity) {
-  ESP_LOGI(TAG, "Updating MOTD to: %.*s", static_cast<int>(entity.get_value().length()),
-           entity.get_value().data());
-  HAL::Display::Guard lock;
-  if (motd_label) {
-    lv_label_set_text_static(motd_label, entity.get_value().data());
-  }
-}
-
-HAPPY::Entities::Text motd(dongley_device, "motd", "Message of the Day",
-                           {
-                               .icon = "mdi:message-text",
-                               .on_update = update_motd,
-                           });
-
-void show_dongley_test_label() {
-  HAL::Display::Guard lock;
-  motd_label = lv_label_create(lv_screen_active());
-  const char* message = "Dongley - KPop Demon Hunters Edition!    ";
-  if (motd.get_value().length() > 0) {
-    message = motd.get_value().data();
-  }
-  lv_label_set_text_static(motd_label, message);
-  lv_obj_set_width(motd_label, 128);
-  lv_label_set_long_mode(motd_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-  lv_obj_center(motd_label);
-}
-
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
   initialize_network_logger();
@@ -264,12 +163,7 @@ extern "C" void app_main(void) {
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   init_json_to_use_psram();
 
-  EspTask<int> display_init_task;
-  display_init_task.start({.core_id = 1}, 0, [](auto&) {
-    // Initialize the display in parallel.
-    HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
-    HAL::Ssd1306::default_instance().init_lvgl().log_error(TAG, "Failed to init LVGL display");
-    show_dongley_test_label();
+  init_dongley_display([] {
     if (--startup_checks == 0) mark_ota_valid();
   });
 
@@ -278,10 +172,9 @@ extern "C" void app_main(void) {
 
   alarms.init(dongley_device);
 
-  diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
 
-  gpio_set_direction(GPIO_NUM_5, GPIO_MODE_INPUT);  // Photoresistor.
+  install_dongley_sensors();
 
   dongley_device.load();  // Load all entities from NVS before starting the network
 
@@ -289,29 +182,12 @@ extern "C" void app_main(void) {
     ntp_is_ready = true;
     AlarmClockBase::on_time_synced();
     if (--startup_checks == 0) mark_ota_valid();
-    diagnostics->publish_all();
-
-    // DHT11 takes longer to boot up - it usually fails if we try to read it here.
-    temp22_entity.publish_if_changed();
-    hum22_entity.publish_if_changed();
+    publish_sensors_on_time_sync();
 
     network.time_sync_callback = [](struct timeval* /*tv*/) {
-      diagnostics->publish_all();  // Re-publish diagnostics after each NTP sync.
-
-      // Continue poking temp/humidity sensors.
-      temp11_entity.publish_if_changed();
-      hum11_entity.publish_if_changed();
-      temp22_entity.publish_if_changed();
-      hum22_entity.publish_if_changed();
+      publish_sensors_on_time_sync();  // Re-publish sensors/diagnostics after each NTP sync.
     };
   };
-
-  light_hw_input.begin({
-      .on_changed =
-          [](bool, void*) {
-            main_loop.push<&HAPPY::Entities::Sensor::request_publish>(&ambient_light_sensor);
-          },
-  });
 
   // Entities must be registered before the network is started so discovery messages are not missed.
   // We delay network.start() until the loop has iterated once so that the code is cached, and not
