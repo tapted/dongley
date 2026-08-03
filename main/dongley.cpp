@@ -7,11 +7,11 @@
 
 #include "alarm_clock.hpp"
 #include "dongley_device.hpp"
-#include "dongley_sensors.hpp"
 #include "dongley_display.hpp"
+#include "dongley_network.hpp"
+#include "dongley_sensors.hpp"
 #include "espbase/boot/check_crash_loop.hpp"
 #include "espbase/boot/delayed_pm_enable.hpp"
-#include "espbase/boot/favicon_route.hpp"
 #include "espbase/boot/network_logger.hpp"
 #include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/json.hpp"
@@ -20,7 +20,6 @@
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/passive.hpp"
 #include "halpp/led_strip/led_strip.hpp"
-#include "halpp/network/default_network.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/ota.hpp"
@@ -31,24 +30,10 @@ static constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
 static volatile bool ntp_is_ready = false;
 }  // namespace
 
-// We use a static atomic counter to track the number of startup checks that need to complete before
-// marking the app as valid and canceling any rollback. This ensures that both the NTP sync and
-// display initialization have completed successfully before proceeding.
-static std::atomic<int> startup_checks = 3;
-
-class Network : public DefaultNetwork {
-  httpd_handle_t server_ = nullptr;
-
- public:
-  void network_ready(const esp_netif_ip_info_t& ip_info) override;
-};
-
 static constinit AlarmClock<3> alarms;
 static HAPPY::Entities::OtaController* ota_controller = nullptr;
 
 namespace {
-
-constinit Network network;
 
 void on_light_update(const HAPPY::Entities::Light& light) {
   auto& strip = HAL::LedStrip::default_instance();
@@ -65,23 +50,6 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
                                    });
 
 }  // namespace
-
-void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
-  if (server_) {
-    ESP_LOGI(TAG, "Network::network_ready() called multiple times, ignoring.");
-    return;
-  }
-  auto server = install_network_logger_routes(nullptr);
-  if (server) {
-    server_ = *server;
-    install_favicon_route(server_);
-    ESP_LOGI(TAG, "Network logger HTTP server started successfully.");
-  }
-  if (dongley_device_begin()) {
-    ESP_LOGI(TAG, "MQTT client started successfully");
-    if (--startup_checks == 0) mark_ota_valid();
-  }
-}
 
 EspResult<void> init_and_run_display() {
   if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13})) {
@@ -163,9 +131,7 @@ extern "C" void app_main(void) {
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   init_json_to_use_psram();
 
-  init_dongley_display([] {
-    if (--startup_checks == 0) mark_ota_valid();
-  });
+  init_dongley_display();
 
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
       .log_error(TAG, "Failed to init default LED");
@@ -181,7 +147,7 @@ extern "C" void app_main(void) {
   network.time_sync_callback = [](struct timeval* /*tv*/) {
     ntp_is_ready = true;
     AlarmClockBase::on_time_synced();
-    if (--startup_checks == 0) mark_ota_valid();
+    startup_gate_passed();
     publish_sensors_on_time_sync();
 
     network.time_sync_callback = [](struct timeval* /*tv*/) {

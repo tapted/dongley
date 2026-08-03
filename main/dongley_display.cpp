@@ -3,6 +3,7 @@
 #include <lvgl.h>
 
 #include "dongley_device.hpp"
+#include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/esp_task.hpp"
 #include "halpp/display/display.hpp"
 #include "halpp/display/ssd1306.hpp"
@@ -40,18 +41,13 @@ void show_dongley_test_label() {
   lv_obj_center(motd_label);
 }
 
-static void (*on_display_init_success)() = nullptr;
-
-void init_dongley_display(void (*on_success)()) {
-  on_display_init_success = on_success;
+void init_dongley_display() {
   EspTask<int> display_init_task;
   display_init_task.start({.core_id = 1}, 0, [](auto&) {
     // Initialize the display in parallel.
     HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
     HAL::Ssd1306::default_instance().init_lvgl().log_error(TAG, "Failed to init LVGL display");
     show_dongley_test_label();
-    if (on_display_init_success) {
-      on_display_init_success();
-    }
+    startup_gate_passed();
   });
 }
