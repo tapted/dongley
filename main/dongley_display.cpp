@@ -48,6 +48,6 @@ void init_dongley_display() {
     HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
     HAL::Ssd1306::default_instance().init_lvgl().log_error(TAG, "Failed to init LVGL display");
     show_dongley_test_label();
-    startup_gate_passed();
+    startup_gate_passed("Ssd1306 Display Initialized");
   });
 }

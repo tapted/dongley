@@ -126,7 +126,7 @@ extern "C" void app_main(void) {
   delayed_pm_enable();
 
   // Start the 2-minute countdown (Does nothing if this isn't a fresh OTA)
-  start_ota_rollback_watchdog(120000);
+  start_ota_rollback_watchdog(3, 120000);
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   init_json_to_use_psram();
@@ -147,7 +147,7 @@ extern "C" void app_main(void) {
   network.time_sync_callback = [](struct timeval* /*tv*/) {
     ntp_is_ready = true;
     AlarmClockBase::on_time_synced();
-    startup_gate_passed();
+    startup_gate_passed("NTP Time Synced");
     publish_sensors_on_time_sync();
 
     network.time_sync_callback = [](struct timeval* /*tv*/) {

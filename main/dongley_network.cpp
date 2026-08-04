@@ -21,7 +21,6 @@ void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
     ESP_LOGI(TAG, "Network logger HTTP server started successfully.");
   }
   if (dongley_device_begin()) {
-    ESP_LOGI(TAG, "MQTT client started successfully");
-    startup_gate_passed();
+    startup_gate_passed("MQTT client started successfully");
   }
 }
