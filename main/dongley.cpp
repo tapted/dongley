@@ -1,11 +1,8 @@
-#include <cstdint>
-#include <esp_err.h>
 #include <esp_log.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include <soc/gpio_num.h>
 
 #include "alarm_clock.hpp"
+#include "dongley_clock.hpp"
 #include "dongley_device.hpp"
 #include "dongley_display.hpp"
 #include "dongley_network.hpp"
@@ -17,10 +14,7 @@
 #include "espbase/json.hpp"
 #include "espbase/main_loop.hpp"
 #include "espbase/nvs_store.hpp"
-#include "halpp/buzzer/beeps.hpp"
-#include "halpp/buzzer/passive.hpp"
 #include "halpp/led_strip/led_strip.hpp"
-#include "halpp/segmented/i2c_7seg.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/ota.hpp"
 
@@ -51,66 +45,6 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
 
 }  // namespace
 
-EspResult<void> init_and_run_display() {
-  if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13})) {
-    return err.log(TAG, "Failed to initialize passive buzzer");
-  }
-  HAL::Passive& buzzer = HAL::Passive::default_instance();
-
-  // disable during development - it's too annoying :P.
-  // buzzer.play(HAL::beeps::startup);
-
-  if (EspError err = HAL::I2C7Seg::init_default()) {
-    return err.log(TAG, "Failed to initialize 7-segment display");
-  }
-  HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
-
-  uint32_t i = 0;
-  uint32_t divisor = 1;
-  uint32_t delay_ms = 10;
-  uint32_t next_threshold = 10000;
-  bool first_loop = true;
-  bool network_start_called = false;
-
-  while (true) {
-    if (!first_loop && !network_start_called) {
-      network.start();
-      network_start_called = true;
-    }
-    // When we cross the threshold, scale our units by 10
-    if (i >= next_threshold) {
-      divisor *= 10;
-      delay_ms *= 10;
-      next_threshold *= 10;
-
-      buzzer.play(HAL::beeps::success);
-      ESP_LOGI(TAG, "Scale shifted! Divisor: %lu, Delay: %lu ms", divisor, delay_ms);
-    }
-
-    // Print the scaled value (drops the least significant digits)
-    display.print_number(i / divisor);
-
-    if (EspError err = display.write_display()) {
-      // Ensure network is started even if display fails
-      if (!network_start_called) network.start();
-
-      return err.log(TAG, "Failed to write 7-segment display");
-    }
-
-    // Increment `i` by the divisor.
-    // This ensures `i` always represents the total elapsed time in 10ms ticks,
-    // and the display visibly updates on every single loop iteration.
-    i += divisor;
-
-    vTaskDelay(pdMS_TO_TICKS(delay_ms));
-    if (ntp_is_ready) {
-      break;
-    }
-    first_loop = false;
-  }
-  return ESP_OK;
-}
-
 static void on_crash_loop_threshold() {
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
       .log_error(TAG, "Failed to init crash loop LED");
@@ -133,18 +67,12 @@ extern "C" void app_main(void) {
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   init_json_to_use_psram();
-
   init_dongley_display();
-
-  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
-      .log_error(TAG, "Failed to init default LED");
-
+  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN}).log_error(TAG, "Onboard LED init");
+  
   alarms.init(dongley_device);
-
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
-
   install_dongley_sensors();
-
   dongley_device.load();  // Load all entities from NVS before starting the network
 
   network.time_sync_callback = [](struct timeval* /*tv*/) {
@@ -159,9 +87,9 @@ extern "C" void app_main(void) {
   };
 
   // Entities must be registered before the network is started so discovery messages are not missed.
-  // We delay network.start() until the loop has iterated once so that the code is cached, and not
-  // stalled while the wifi stack pulls calibration data from flash.
-  init_and_run_display();
+  network.start();
+
+  init_and_run_clock(&ntp_is_ready);
 
   ESP_LOGI(TAG, "Starting main loop...");
   main_loop.run_forever();
