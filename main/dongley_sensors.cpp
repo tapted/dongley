@@ -1,6 +1,7 @@
 #include "dongley_sensors.hpp"
 
 #include "dongley_device.hpp"
+#include "espbase/main_loop_task.hpp"
 #include "halpp/gpio/debounced_input.hpp"
 #include "happy/entities//lazy_sensor.hpp"
 #include "happy/entities/system_diagnostics.hpp"
@@ -45,6 +46,8 @@ static Sensor ambient_light_sensor(dongley_device, "ambient_light", "Ambient Lig
 
 static HAPPY::Entities::SystemDiagnostics* diagnostics = nullptr;
 
+static constinit MainLoopTask<void> publish_sensors_on_time_interval;
+
 void install_dongley_sensors() {
   diagnostics = new HAPPY::Entities::SystemDiagnostics(dongley_device);
 
@@ -54,12 +57,18 @@ void install_dongley_sensors() {
                        void*) { main_loop.push<&Sensor::request_publish>(&ambient_light_sensor); },
   });
   main_loop.push<&Sensor::request_publish>(&ambient_light_sensor);
+
+  publish_sensors_on_time_interval.start({.name = "publish_sensors"}, nullptr,
+                                         [](auto&) -> std::optional<uint32_t> {
+                                           publish_sensors_on_time_sync();
+                                           return 60000;  // Re-run every 60 seconds
+                                         });
 }
 
 void publish_sensors_on_time_sync() {
   static bool synced_once = false;
 
-  diagnostics->publish_all();
+  diagnostics->publish_all_mutable();
 
   if (synced_once) {
     // DHT11 takes longer to settle. Wait for second sync.

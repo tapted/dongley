@@ -120,8 +120,11 @@ static void on_crash_loop_threshold() {
   led.refresh();
 }
 
+extern size_t system_diagnostic_free_iram_at_boot;
+
 extern "C" void app_main(void) {
   check_crash_loop(on_crash_loop_threshold);
+  system_diagnostic_free_iram_at_boot = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
   initialize_network_logger();
   delayed_pm_enable();
 

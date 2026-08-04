@@ -23,9 +23,6 @@ AllowShortFunctionsOnASingleLine: InlineOnly
 
 # Explicitly define the hierarchy (0 is top, 3 is bottom)
 IncludeCategories:
-  # 0. Corresponding Header (Auto-detected by clang-format, but we can force main regex)
-  - Regex:           '^[<"](hal|ui)/.*' # Optional: push specific folders lower
-    Priority:        3
   # 1. System Headers (<vector>, <string>, etc.)
   - Regex:           '^<.*>'
     Priority:        1
