@@ -1,6 +1,7 @@
 #include "dongley_sensors.hpp"
 
 #include "dongley_device.hpp"
+#include "dongley_display.hpp"
 #include "espbase/main_loop_task.hpp"
 #include "halpp/gpio/debounced_input.hpp"
 #include "happy/entities//lazy_sensor.hpp"
@@ -16,6 +17,20 @@ using HAPPY::Sensors::DhtSensorReader;
 static constinit DhtSensorReader dht11_reader(GPIO_NUM_16, HAPPY::Sensors::DHTType::DHT11);
 static constinit DhtSensorReader dht22_reader(GPIO_NUM_4, HAPPY::Sensors::DHTType::AM2301);
 
+static void on_temperature_change(Sensor& sensor, const std::string& value) {
+  ESP_LOGD("DHT22", "Temperature changed: %s %s", value.c_str(),
+           sensor.config().unit_of_measurement);
+  if (value != "unknown") {
+    set_display_temperature(value);
+  }
+}
+static void on_humidity_change(Sensor& sensor, const std::string& value) {
+  ESP_LOGD("DHT22", "Humidity changed: %s %s", value.c_str(), sensor.config().unit_of_measurement);
+  if (value != "unknown") {
+    set_display_humidity(value);
+  }
+}
+
 static StatefulSensor<int16_t> temp11_entity(
     dongley_device, "dht11_temp", "DHT11 Temperature",
     {.device_class = "temperature", .unit_of_measurement = "°C"}, dht11_reader,
@@ -28,13 +43,21 @@ static StatefulSensor<int16_t> hum11_entity(
 
 static StatefulSensor<int16_t> temp22_entity(
     dongley_device, "dht22_temp", "DHT22 Temperature",
-    {.device_class = "temperature", .unit_of_measurement = "°C"}, dht22_reader,
-    []() -> int16_t { return dht22_reader.get_temp(); }, format_tenths);
+    {
+        .device_class = "temperature",
+        .unit_of_measurement = "°C",
+        .on_state_publish = on_temperature_change,
+    },
+    dht22_reader, []() -> int16_t { return dht22_reader.get_temp(); }, format_tenths);
 
 static StatefulSensor<int16_t> hum22_entity(
     dongley_device, "dht22_hum", "DHT22 Humidity",
-    {.device_class = "humidity", .unit_of_measurement = "%"}, dht22_reader,
-    []() -> int16_t { return dht22_reader.get_humidity(); }, format_tenths);
+    {
+        .device_class = "humidity",
+        .unit_of_measurement = "%",
+        .on_state_publish = on_humidity_change,
+    },
+    dht22_reader, []() -> int16_t { return dht22_reader.get_humidity(); }, format_tenths);
 
 static constinit DebouncedInput light_hw_input(GPIO_NUM_5);
 static constexpr Sensor::Config ambient_light_sensor_config = {
