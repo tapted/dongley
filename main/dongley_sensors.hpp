@@ -1,4 +1,4 @@
 #pragma once
 
 void install_dongley_sensors();
-void publish_sensors_on_time_sync();
+void publish_dongley_sensors(bool time_sync = false);

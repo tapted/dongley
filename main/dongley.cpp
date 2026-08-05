@@ -69,7 +69,7 @@ extern "C" void app_main(void) {
   init_json_to_use_psram();
   init_dongley_display();
   HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN}).log_error(TAG, "Onboard LED init");
-  
+
   alarms.init(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
   install_dongley_sensors();
@@ -79,10 +79,10 @@ extern "C" void app_main(void) {
     ntp_is_ready = true;
     AlarmClockBase::on_time_synced();
     startup_gate_passed("NTP Time Synced");
-    publish_sensors_on_time_sync();
+    publish_dongley_sensors(true);
 
     network.time_sync_callback = [](struct timeval* /*tv*/) {
-      publish_sensors_on_time_sync();  // Re-publish sensors/diagnostics after each NTP sync.
+      publish_dongley_sensors(true);  // Re-publish sensors/diagnostics after each NTP sync.
     };
   };
 

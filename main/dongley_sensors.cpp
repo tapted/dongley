@@ -60,15 +60,15 @@ void install_dongley_sensors() {
 
   publish_sensors_on_time_interval.start({.name = "publish_sensors"}, nullptr,
                                          [](auto&) -> std::optional<uint32_t> {
-                                           publish_sensors_on_time_sync();
+                                           publish_dongley_sensors();
                                            return 60000;  // Re-run every 60 seconds
                                          });
 }
 
-void publish_sensors_on_time_sync() {
+void publish_dongley_sensors(bool time_sync) {
   static bool synced_once = false;
 
-  diagnostics->publish_all_mutable();
+  diagnostics->publish_all_mutable(time_sync);
 
   if (synced_once) {
     // DHT11 takes longer to settle. Wait for second sync.
@@ -77,5 +77,5 @@ void publish_sensors_on_time_sync() {
   }
   temp22_entity.publish_if_changed();
   hum22_entity.publish_if_changed();
-  synced_once = true;
+  if (time_sync) synced_once = true;
 }
