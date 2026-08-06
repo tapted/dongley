@@ -31,6 +31,23 @@ static void on_humidity_change(Sensor& sensor, const std::string& value) {
   }
 }
 
+static std::string get_current_date_string() {
+  time_t now;
+  time(&now);  // Get current UNIX epoch time
+
+  struct tm timeinfo;
+  localtime_r(&now, &timeinfo);  // Convert to local time safely
+
+  char buf[32];
+  // %a = Abbr Weekday (Wed)
+  // %e = Day of month (7). Note: single digits get a leading space (e.g. " 7")
+  // %b = Abbr Month (Aug)
+  // %Y = Year (2026)
+  strftime(buf, sizeof(buf), "%a %e %b %Y", &timeinfo);
+
+  return std::string(buf);
+}
+
 static StatefulSensor<int16_t> temp11_entity(
     dongley_device, "dht11_temp", "DHT11 Temperature",
     {.device_class = "temperature", .unit_of_measurement = "°C"}, dht11_reader,
@@ -100,5 +117,8 @@ void publish_dongley_sensors(bool time_sync) {
   }
   temp22_entity.publish_if_changed();
   hum22_entity.publish_if_changed();
+  if (time_sync || synced_once) {
+    set_display_footer(get_current_date_string());
+  }
   if (time_sync) synced_once = true;
 }

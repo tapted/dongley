@@ -11,10 +11,13 @@
 #include "widgets/label/lv_label.h"
 
 static constexpr char TAG[] = "DongleyDisplay";
+static constexpr int DISPLAY_WIDTH = 128;
+static constexpr int DISPLAY_HEIGHT = 64;
 
 static lv_obj_t* motd_label = nullptr;
 static lv_obj_t* temperature_label = nullptr;
 static lv_obj_t* humidity_label = nullptr;
+static lv_obj_t* footer_label = nullptr;
 
 void update_motd(const HAPPY::Entities::Text& entity) {
   ESP_LOGI(TAG, "Updating MOTD to: %.*s", static_cast<int>(entity.get_value().length()),
@@ -55,7 +58,7 @@ void show_dongley_test_label() {
     message = motd.get_value().data();
   }
   lv_label_set_text_static(motd_label, message);
-  lv_obj_set_width(motd_label, 128);
+  lv_obj_set_width(motd_label, DISPLAY_WIDTH);
   lv_label_set_long_mode(motd_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 
   // 3. Middle horizontal container (Line 2)
@@ -81,6 +84,12 @@ void show_dongley_test_label() {
   // 5. Humidity label (Right)
   humidity_label = lv_label_create(row_cont);
   lv_label_set_text(humidity_label, "--%");
+
+  // 6. Footer label (Line 3)
+  footer_label = lv_label_create(main_cont);
+  lv_label_set_text_static(footer_label, "Footer text here");
+  lv_obj_set_width(footer_label, DISPLAY_WIDTH);
+  lv_label_set_long_mode(footer_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 }
 
 void init_dongley_display() {
@@ -105,5 +114,12 @@ void set_display_humidity(const std::string& hum_str) {
   HAL::Display::Guard lock;
   if (humidity_label) {
     lv_label_set_text_fmt(humidity_label, "%s%%", hum_str.c_str());
+  }
+}
+
+void set_display_footer(const std::string& footer_str) {
+  HAL::Display::Guard lock;
+  if (footer_label) {
+    lv_label_set_text(footer_label, footer_str.c_str());
   }
 }
