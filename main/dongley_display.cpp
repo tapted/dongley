@@ -39,17 +39,24 @@ void show_dongley_test_label() {
 
   // 1. Main full-screen vertical container (Column)
   lv_obj_t* main_cont = lv_obj_create(lv_screen_active());
-  lv_obj_set_size(main_cont, LV_PCT(100), LV_PCT(100));
+  lv_obj_set_size(main_cont, DISPLAY_WIDTH, DISPLAY_HEIGHT);  // Ensure exact screen bounds
 
-  // Strip default borders and padding
+  // Strip all default borders, padding, and row spacing
   lv_obj_set_style_border_width(main_cont, 0, 0);
   lv_obj_set_style_pad_all(main_cont, 0, 0);
+  lv_obj_set_style_pad_row(main_cont, 0, 0);  // Kills the uneven gap between rows
   lv_obj_set_style_bg_opa(main_cont, LV_OPA_TRANSP, 0);
+
+  // Disable the scrollbar explicitly
+  lv_obj_remove_flag(main_cont, LV_OBJ_FLAG_SCROLLABLE);
 
   // Configure vertical flow and center everything
   lv_obj_set_layout(main_cont, LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(main_cont, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(main_cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  // Use SPACE_AROUND or SPACE_EVENLY to distribute 3 rows symmetrically
+  lv_obj_set_flex_align(main_cont, LV_FLEX_ALIGN_SPACE_AROUND, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
 
   // 2. MOTD label (Line 1)
   motd_label = lv_label_create(main_cont);
@@ -61,16 +68,13 @@ void show_dongley_test_label() {
   lv_obj_set_width(motd_label, DISPLAY_WIDTH);
   lv_label_set_long_mode(motd_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 
-  // 3. Middle horizontal container (Line 2)
+  // 3. Middle horizontal container (Line 2 - Temp & Humidity)
   lv_obj_t* row_cont = lv_obj_create(main_cont);
-  lv_obj_set_size(row_cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT); // Only as big as the text inside it
+  lv_obj_set_size(row_cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
   lv_obj_set_style_border_width(row_cont, 0, 0);
   lv_obj_set_style_pad_all(row_cont, 0, 0);
-  lv_obj_set_style_bg_opa(row_cont, LV_OPA_TRANSP, 0);
-
-  // Add a vertical gap below the MOTD, and a horizontal gap between Temp & Humidity
-  lv_obj_set_style_pad_top(row_cont, 10, 0);
-  lv_obj_set_style_pad_column(row_cont, 20, 0); 
+  lv_obj_set_style_pad_column(row_cont, 15, 0);  // Gap between temp and humidity
+  lv_obj_remove_flag(row_cont, LV_OBJ_FLAG_SCROLLABLE);
 
   // Configure horizontal flow
   lv_obj_set_layout(row_cont, LV_LAYOUT_FLEX);
