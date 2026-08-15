@@ -2,7 +2,7 @@
 
 #include "halpp/config_defaults.hpp"
 
-namespace HAL::board {
+namespace halpp::board {
 
 struct config : detail::Defaults {
   struct I2CConfig : detail::Defaults::I2CConfig {
@@ -14,4 +14,4 @@ struct config : detail::Defaults {
   };
 };  // struct config
 
-}  // namespace HAL::board
+}  // namespace halpp::board
