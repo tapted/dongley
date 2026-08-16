@@ -1,11 +1,11 @@
 #include "dongley_device.hpp"
 
 constinit HAPPY::Transports::MqttDevice dongley_device({
-    .identifiers = "dongley_v1_001",
+    .identifiers = "dongley",
     .name = "Dongley",
     .manufacturer = "Custom",
     .model = "ESP32-S3 WROOM-1 DevKit",
-    .sw_version = "0.1",  // esp_app_get_description()->version
+    .append_mac_chars = 4,  // Append last 4 chars of MAC to identifiers and name
 });
 
 EspResult<> dongley_device_begin() {
