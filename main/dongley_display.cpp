@@ -100,8 +100,14 @@ void init_dongley_display() {
   EspTask<int> display_init_task;
   display_init_task.start({.core_id = 1}, 0, [](auto&) {
     // Initialize the display in parallel.
-    HAL::Ssd1306::init_default_i2c().log_error(TAG, "Failed to init SSD1306 display");
-    HAL::Ssd1306::default_instance().init_lvgl().log_error(TAG, "Failed to init LVGL display");
+    if (EspError err = HAL::Ssd1306::init_default_i2c()) {
+      err.log(TAG, "Failed to init SSD1306 display; won't start lvgl task");
+      return;
+    }
+    if (EspError err = HAL::Ssd1306::default_instance().init_lvgl()) {
+      err.log(TAG, "Failed to init LVGL display.");
+      return;
+    }
     show_dongley_test_label();
     startup_gate_passed("Ssd1306 Display Initialized");
   });

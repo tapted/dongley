@@ -3,19 +3,22 @@
 #include "dongley_device.hpp"
 #include "dongley_display.hpp"
 #include "espbase/main_loop_task.hpp"
+#include "halpp/config.hpp"
 #include "halpp/gpio/debounced_input.hpp"
 #include "happy/entities//lazy_sensor.hpp"
 #include "happy/entities/system_diagnostics.hpp"
 #include "happy/sensors/dht_sensor.hpp"
 
+using halpp::config;
 using halpp::gpio::DebouncedInput;
 using HAPPY::Entities::format_tenths;
 using HAPPY::Entities::Sensor;
 using HAPPY::Entities::StatefulSensor;
 using HAPPY::Sensors::DhtSensorReader;
+using HAPPY::Sensors::DHTType;
 
-static constinit DhtSensorReader dht11_reader(GPIO_NUM_16, HAPPY::Sensors::DHTType::DHT11);
-static constinit DhtSensorReader dht22_reader(GPIO_NUM_4, HAPPY::Sensors::DHTType::AM2301);
+static constinit DhtSensorReader dht11_reader(config::TempDht11::PIN_DATA, DHTType::DHT11);
+static constinit DhtSensorReader dht22_reader(config::TempDht22::PIN_DATA, DHTType::AM2301);
 
 static void on_temperature_change(Sensor& sensor, const std::string& value) {
   ESP_LOGD("DHT22", "Temperature changed: %s %s", value.c_str(),
@@ -76,7 +79,7 @@ static StatefulSensor<int16_t> hum22_entity(
     },
     dht22_reader, []() -> int16_t { return dht22_reader.get_humidity(); }, format_tenths);
 
-static constinit DebouncedInput light_hw_input(GPIO_NUM_5);
+static constinit DebouncedInput light_hw_input(config::AmbientLightSensor::PIN_DATA);
 static constexpr Sensor::Config ambient_light_sensor_config = {
     .icon = "mdi:theme-light-dark",
     .get_value = [](void*) -> std::string { return light_hw_input.get_level() ? "dark" : "light"; },
@@ -110,13 +113,16 @@ void publish_dongley_sensors(bool time_sync) {
 
   diagnostics->publish_all_mutable(time_sync);
 
-  if (synced_once) {
+  if (synced_once && dht11_reader.last_error == ESP_OK) {
     // DHT11 takes longer to settle. Wait for second sync.
     temp11_entity.publish_if_changed();
     hum11_entity.publish_if_changed();
   }
-  temp22_entity.publish_if_changed();
-  hum22_entity.publish_if_changed();
+  if (dht22_reader.last_error == ESP_OK) {
+    temp22_entity.publish_if_changed();
+    hum22_entity.publish_if_changed();
+  }
+
   if (time_sync || synced_once) {
     set_display_footer(get_current_date_string());
   }

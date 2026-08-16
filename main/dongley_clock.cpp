@@ -5,11 +5,12 @@
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/passive.hpp"
 #include "halpp/segmented/i2c_7seg.hpp"
+#include "halpp/config.hpp"
 
 constexpr char const TAG[] = "dongley_clock";
 
 EspResult<> init_and_run_clock(volatile bool* exit_stopwatch) {
-  if (EspError err = HAL::Passive::init_default({.gpio_num = GPIO_NUM_13})) {
+  if (EspError err = HAL::Passive::init_default({.gpio_num = halpp::config::Buzzer::PIN_PWM})) {
     return err.log(TAG, "Failed to initialize passive buzzer");
   }
   HAL::Passive& buzzer = HAL::Passive::default_instance();

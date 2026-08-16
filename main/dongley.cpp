@@ -17,10 +17,10 @@
 #include "halpp/led_strip/led_strip.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/ota.hpp"
+#include "halpp/config.hpp"
 
 namespace {
 static constexpr char TAG[] = "dongley";
-static constexpr gpio_num_t LED_GPIO_PIN = GPIO_NUM_48;
 static volatile bool ntp_is_ready = false;
 }  // namespace
 
@@ -46,7 +46,7 @@ HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
 }  // namespace
 
 static void on_crash_loop_threshold() {
-  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN})
+  HAL::LedStrip::init_default({.gpio_num = halpp::config::IndicatorLed::PIN_PWM})
       .log_error(TAG, "Failed to init crash loop LED");
   HAL::LedStrip& led = HAL::LedStrip::default_instance();
 
@@ -68,7 +68,7 @@ extern "C" void app_main(void) {
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   init_json_to_use_psram();
   init_dongley_display();
-  HAL::LedStrip::init_default({.gpio_num = LED_GPIO_PIN}).log_error(TAG, "Onboard LED init");
+  HAL::LedStrip::init_default({.gpio_num = halpp::config::IndicatorLed::PIN_PWM}).log_error(TAG, "Onboard LED init");
 
   alarms.init(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
