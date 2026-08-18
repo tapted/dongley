@@ -21,6 +21,14 @@ struct config : detail::Defaults {
     static constexpr gpio_num_t PIN_QSPI_SDA_2 = GPIO_NUM_14;    // FSPIWP
     static constexpr gpio_num_t PIN_QSPI_SDA_3 = GPIO_NUM_9;     // FSPIHD
   };
+
+  struct Display : detail::Defaults::Display {
+    static constexpr uint16_t WIDTH = 128;
+    static constexpr uint16_t HEIGHT = 64;
+    static constexpr uint8_t BITS_PER_PIXEL = 1;
+    static constexpr bool INVERT_COLORS = true;
+  };
+
   struct Display7Seg : detail::Defaults::Display7Seg {
     static constexpr uint8_t I2C_ADDRESS = 0x70;
   };
