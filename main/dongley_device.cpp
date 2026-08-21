@@ -1,5 +1,7 @@
 #include "dongley_device.hpp"
 
+#include <mqtt_client.h>
+
 constinit HAPPY::Transports::MqttDevice dongley_device({
     .identifiers = "dongley",
     .name = "Dongley",

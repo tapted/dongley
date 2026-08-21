@@ -22,7 +22,7 @@ static lv_obj_t* footer_label = nullptr;
 void update_motd(const HAPPY::Entities::Text& entity) {
   ESP_LOGI(TAG, "Updating MOTD to: %.*s", static_cast<int>(entity.get_value().length()),
            entity.get_value().data());
-  HAL::Display::Guard lock;
+  halpp::Display::Guard lock;
   if (motd_label) {
     lv_label_set_text_static(motd_label, entity.get_value().data());
   }
@@ -35,7 +35,7 @@ HAPPY::Entities::Text motd(dongley_device, "motd", "Message of the Day",
                            });
 
 void show_dongley_test_label() {
-  HAL::Display::Guard lock;
+  halpp::Display::Guard lock;
 
   // 1. Main full-screen vertical container (Column)
   lv_obj_t* main_cont = lv_obj_create(lv_screen_active());
@@ -100,11 +100,11 @@ void init_dongley_display() {
   EspTask<int> display_init_task;
   display_init_task.start({.core_id = 1}, 0, [](auto&) {
     // Initialize the display in parallel.
-    if (EspError err = HAL::Ssd1306::init_default_i2c()) {
+    if (EspError err = halpp::Ssd1306::init_default_i2c()) {
       err.log(TAG, "Failed to init SSD1306 display; won't start lvgl task");
       return;
     }
-    if (EspError err = HAL::Ssd1306::default_instance().init_lvgl()) {
+    if (EspError err = halpp::Ssd1306::default_instance().init_lvgl()) {
       err.log(TAG, "Failed to init LVGL display.");
       return;
     }
@@ -114,21 +114,21 @@ void init_dongley_display() {
 }
 
 void set_display_temperature(const std::string& temp_str) {
-  HAL::Display::Guard lock;
+  halpp::Display::Guard lock;
   if (temperature_label) {
     lv_label_set_text_fmt(temperature_label, "%s°C", temp_str.c_str());
   }
 }
 
 void set_display_humidity(const std::string& hum_str) {
-  HAL::Display::Guard lock;
+  halpp::Display::Guard lock;
   if (humidity_label) {
     lv_label_set_text_fmt(humidity_label, "%s%%", hum_str.c_str());
   }
 }
 
 void set_display_footer(const std::string& footer_str) {
-  HAL::Display::Guard lock;
+  halpp::Display::Guard lock;
   if (footer_label) {
     lv_label_set_text(footer_label, footer_str.c_str());
   }

@@ -12,6 +12,7 @@ file(GLOB_RECURSE DEPS_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/halpp/src/halpp/buzzer/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/happy/src/*.cpp
 )
+
 file(GLOB_RECURSE MAIN_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/*.cpp

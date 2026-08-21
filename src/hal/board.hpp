@@ -13,7 +13,7 @@ struct config : detail::Defaults {
     static constexpr gpio_num_t PIN_SDA = GPIO_NUM_8;  // Left 12 (label 8)
     static constexpr gpio_num_t PIN_SCL = GPIO_NUM_9;  // Left 15 (label 9)
   };
-  struct Qspi : detail::Defaults::Qspi {
+  struct SpiBus : detail::Defaults::SpiBus {
     static constexpr gpio_num_t PIN_CHIP_SELECT = GPIO_NUM_10;   // FSPICS0
     static constexpr gpio_num_t PIN_SERIAL_CLOCK = GPIO_NUM_12;  // FSPICLK
     static constexpr gpio_num_t PIN_QSPI_SDA_0 = GPIO_NUM_11;    // FSPID
