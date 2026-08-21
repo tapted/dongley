@@ -21,7 +21,7 @@ add_custom_target(ota
         --broker "10.1.0.201"
         --user "puck1e80"
         --password "A9CeSm4MX7tcSMT"
-        --topic "dongley_v1_001/ota_trigger/set"
+        --topic "dongley_FB60/ota_trigger/set"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}    
     COMMENT "Building and pushing OTA update to ESP32..."
     USES_TERMINAL

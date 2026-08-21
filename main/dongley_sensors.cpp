@@ -96,10 +96,9 @@ void install_dongley_sensors() {
 
   light_hw_input.begin({
       .debounce_ms = 200,
-      .on_changed = [](bool,
-                       void*) { main_loop.push<&Sensor::request_publish>(&ambient_light_sensor); },
+      .on_changed = [](bool, void*) { ambient_light_sensor.request_publish(); },
   });
-  main_loop.push<&Sensor::request_publish>(&ambient_light_sensor);
+  ambient_light_sensor.request_publish();
 
   publish_sensors_on_time_interval.start({.name = "publish_sensors"}, nullptr,
                                          [](auto&) -> std::optional<uint32_t> {
