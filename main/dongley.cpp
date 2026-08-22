@@ -11,7 +11,6 @@
 #include "espbase/boot/delayed_pm_enable.hpp"
 #include "espbase/boot/network_logger.hpp"
 #include "espbase/boot/ota_rollback_watchdog.hpp"
-#include "espbase/json.hpp"
 #include "espbase/main_loop.hpp"
 #include "espbase/nvs_store.hpp"
 #include "halpp/led_strip/led_strip.hpp"
@@ -66,7 +65,6 @@ extern "C" void app_main(void) {
   start_ota_rollback_watchdog(3, 120000);
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
-  init_json_to_use_psram();
   init_dongley_display();
   halpp::LedStrip::init_default({.gpio_num = halpp::config::IndicatorLed::PIN_PWM}).log_error(TAG, "Onboard LED init");
 

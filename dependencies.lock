@@ -39,16 +39,6 @@ dependencies:
     - esp32s2
     - esp32s3
     version: 1.4.0
-  espressif/cjson:
-    component_hash: e788323270d90738662d66fffa910bfe1fba019bba087f01557e70c40485b469
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=5.0'
-    source:
-      registry_url: https://components.espressif.com/
-      type: service
-    version: 1.7.19~2
   espressif/esp_audio_codec:
     component_hash: 16e2880dbdd5a72264051f750f33a6e5a38fd25621c83e3a32a85a152d2d2643
     dependencies:
@@ -71,7 +61,7 @@ dependencies:
       type: service
     version: 1.3.0~1
   espressif/esp_codec_dev:
-    component_hash: 896c67360ae1f8dedaf8a53dfe48c015317fa455f061a5165307892296990028
+    component_hash: 4779f31a3ba3f9b38aee1afe6ccb9ba8f6108dc3a6e77d39d7d714e9a215371b
     dependencies:
     - name: idf
       require: private
@@ -79,7 +69,7 @@ dependencies:
     source:
       registry_url: https://components.espressif.com
       type: service
-    version: 1.5.10
+    version: 1.6.2
   espressif/gmf_audio:
     component_hash: dc88b927adc66bd617aacb39fee28ff61a339f1ab603ff21dc9d0d226eea4947
     dependencies:
@@ -171,13 +161,12 @@ dependencies:
     version: 9.5.0
 direct_dependencies:
 - esp-idf-lib/dht
-- espressif/cjson
 - espressif/gmf_audio
 - espressif/gmf_io
 - espressif/led_strip
 - espressif/mqtt
 - joltwallet/littlefs
 - lvgl/lvgl
-manifest_hash: 1fc9551398fc3e5df6906512689a08be55a3c11e032b9b1cc5bcfa75e61f353d
+manifest_hash: 09156d2e24564d9c455e0231ea9b5fca21871f145838be6b3dfcc5ea2a794b3c
 target: esp32s3
 version: 3.0.0
