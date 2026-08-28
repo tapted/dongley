@@ -5,14 +5,16 @@
 #include "dongley_device.hpp"
 #include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/esp_task.hpp"
+#include "halpp/config.hpp"
 #include "halpp/display/display.hpp"
 #include "halpp/display/ssd1306.hpp"
 #include "happy/entities/text.hpp"
 #include "widgets/label/lv_label.h"
 
+
 static constexpr char TAG[] = "DongleyDisplay";
-static constexpr int DISPLAY_WIDTH = 128;
-static constexpr int DISPLAY_HEIGHT = 64;
+static constexpr int DISPLAY_WIDTH = halpp::config::Display::WIDTH;
+static constexpr int DISPLAY_HEIGHT = halpp::config::Display::HEIGHT;
 
 static lv_obj_t* motd_label = nullptr;
 static lv_obj_t* temperature_label = nullptr;
@@ -113,23 +115,23 @@ void init_dongley_display() {
   });
 }
 
-void set_display_temperature(const std::string& temp_str) {
+void set_display_temperature(std::string_view temp_str) {
   halpp::Display::Guard lock;
   if (temperature_label) {
-    lv_label_set_text_fmt(temperature_label, "%s°C", temp_str.c_str());
+    lv_label_set_text_fmt(temperature_label, "%.*s°C", temp_str.size(), temp_str.data());
   }
 }
 
-void set_display_humidity(const std::string& hum_str) {
+void set_display_humidity(std::string_view hum_str) {
   halpp::Display::Guard lock;
   if (humidity_label) {
-    lv_label_set_text_fmt(humidity_label, "%s%%", hum_str.c_str());
+    lv_label_set_text_fmt(humidity_label, "%.*s%%", hum_str.size(), hum_str.data());
   }
 }
 
-void set_display_footer(const std::string& footer_str) {
+void set_display_footer(std::string_view footer_str) {
   halpp::Display::Guard lock;
   if (footer_label) {
-    lv_label_set_text(footer_label, footer_str.c_str());
+    lv_label_set_text_fmt(footer_label, "%.*s", footer_str.size(), footer_str.data());
   }
 }

@@ -3,6 +3,7 @@
 #include "dongley_device.hpp"
 #include "dongley_display.hpp"
 #include "espbase/main_loop_task.hpp"
+#include "espbase/stack_json/buffer.hpp"
 #include "halpp/config.hpp"
 #include "halpp/gpio/debounced_input.hpp"
 #include "happy/entities//lazy_sensor.hpp"
@@ -20,35 +21,34 @@ using HAPPY::Sensors::DHTType;
 static constinit DhtSensorReader dht11_reader(config::TempDht11::PIN_DATA, DHTType::DHT11);
 static constinit DhtSensorReader dht22_reader(config::TempDht22::PIN_DATA, DHTType::AM2301);
 
-static void on_temperature_change(Sensor& sensor, const std::string& value) {
-  ESP_LOGD("DHT22", "Temperature changed: %s %s", value.c_str(),
+static void on_temperature_change(Sensor& sensor, std::string_view value) {
+  ESP_LOGD("DHT22", "Temperature changed: %s %.*s", value.size(), value.data(),
            sensor.config().unit_of_measurement);
   if (value != "unknown") {
     set_display_temperature(value);
   }
 }
-static void on_humidity_change(Sensor& sensor, const std::string& value) {
-  ESP_LOGD("DHT22", "Humidity changed: %s %s", value.c_str(), sensor.config().unit_of_measurement);
+static void on_humidity_change(Sensor& sensor, std::string_view value) {
+  ESP_LOGD("DHT22", "Humidity changed: %s %.*s", value.size(), value.data(),
+           sensor.config().unit_of_measurement);
   if (value != "unknown") {
     set_display_humidity(value);
   }
 }
 
-static std::string get_current_date_string() {
+static std::string_view get_current_date_string(char (&buf)[32]) {
   time_t now;
   time(&now);  // Get current UNIX epoch time
 
   struct tm timeinfo;
   localtime_r(&now, &timeinfo);  // Convert to local time safely
 
-  char buf[32];
   // %a = Abbr Weekday (Wed)
   // %e = Day of month (7). Note: single digits get a leading space (e.g. " 7")
   // %b = Abbr Month (Aug)
   // %Y = Year (2026)
-  strftime(buf, sizeof(buf), "%a %e %b %Y", &timeinfo);
-
-  return std::string(buf);
+  strftime(buf, 32, "%a %e %b %Y", &timeinfo);
+  return buf;
 }
 
 static StatefulSensor<int16_t> temp11_entity(
@@ -82,7 +82,9 @@ static StatefulSensor<int16_t> hum22_entity(
 static constinit DebouncedInput light_hw_input(config::AmbientLightSensor::PIN_DATA);
 static constexpr Sensor::Config ambient_light_sensor_config = {
     .icon = "mdi:theme-light-dark",
-    .get_value = [](void*) -> std::string { return light_hw_input.get_level() ? "dark" : "light"; },
+    .get_value = [](void*, sjson::Buffer& buf) -> size_t {
+      return buf.write(light_hw_input.get_level() ? "dark" : "light");
+    },
 };
 static Sensor ambient_light_sensor(dongley_device, "ambient_light", "Ambient Light Level",
                                    ambient_light_sensor_config);
@@ -123,7 +125,8 @@ void publish_dongley_sensors(bool time_sync) {
   }
 
   if (time_sync || synced_once) {
-    set_display_footer(get_current_date_string());
+    char buf[32];
+    set_display_footer(get_current_date_string(buf));
   }
   if (time_sync) synced_once = true;
 }
