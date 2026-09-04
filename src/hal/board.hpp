@@ -1,5 +1,6 @@
 #pragma once
 
+#include "hal/board_display.hpp"
 #include "halpp/config_defaults.hpp"
 
 namespace halpp::board {
@@ -23,6 +24,11 @@ struct config : detail::Defaults {
   };
 
   struct Display : detail::Defaults::Display {
+    static constexpr uint8_t I2C_ADDRESS = 0x3C;  // SSD1306 default I2C address
+
+    static constexpr auto NEW_PANEL_FUNC = esp_lcd_new_panel_ssd1306;
+    static constexpr void* VENDOR_CONFIG = (void*)&ssd1306_vendor_config;
+
     static constexpr uint16_t WIDTH = 128;
     static constexpr uint16_t HEIGHT = 64;
     static constexpr uint8_t BITS_PER_PIXEL = 1;
