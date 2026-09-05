@@ -2,6 +2,7 @@
 
 #include "hal/board_display.hpp"
 #include "halpp/config_defaults.hpp"
+#include "halpp/display/ssd1306.hpp"
 
 namespace halpp::board {
 
@@ -24,6 +25,8 @@ struct config : detail::Defaults {
   };
 
   struct Display : detail::Defaults::Display {
+    using DisplayType = halpp::Ssd1306;
+    
     static constexpr uint8_t I2C_ADDRESS = 0x3C;  // SSD1306 default I2C address
 
     static constexpr auto NEW_PANEL_FUNC = esp_lcd_new_panel_ssd1306;

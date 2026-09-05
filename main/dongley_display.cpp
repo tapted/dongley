@@ -7,10 +7,8 @@
 #include "espbase/esp_task.hpp"
 #include "halpp/config.hpp"
 #include "halpp/display/display.hpp"
-#include "halpp/display/ssd1306.hpp"
 #include "happy/entities/text.hpp"
 #include "widgets/label/lv_label.h"
-
 
 static constexpr char TAG[] = "DongleyDisplay";
 static constexpr int DISPLAY_WIDTH = halpp::config::Display::WIDTH;
@@ -102,11 +100,11 @@ void init_dongley_display() {
   EspTask<int> display_init_task;
   display_init_task.start({.core_id = 1}, 0, [](auto&) {
     // Initialize the display in parallel.
-    if (EspError err = halpp::Ssd1306::init_default_i2c()) {
+    if (EspError err = halpp::Display::init_default()) {
       err.log(TAG, "Failed to init SSD1306 display; won't start lvgl task");
       return;
     }
-    if (EspError err = halpp::Ssd1306::default_instance().init_lvgl()) {
+    if (EspError err = halpp::Display::instance().init_lvgl()) {
       err.log(TAG, "Failed to init LVGL display.");
       return;
     }
