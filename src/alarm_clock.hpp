@@ -31,7 +31,7 @@ class AlarmClockBase {
   static void alarm_changed(const HAPPY::Entities::AlarmController& alarm);
 };
 
-template <size_t MAX_ALARMS = 3>
+template <size_t MAX_ALARMS = 5>
 class AlarmClock : public AlarmClockBase {
  public:
   constexpr AlarmClock() : AlarmClockBase(controllers_, MAX_ALARMS) {}

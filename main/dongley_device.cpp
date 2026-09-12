@@ -6,6 +6,7 @@
 #include "happy/entities/button.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/select.hpp"
+#include "happy/entities/status.hpp"
 
 constinit HAPPY::Transports::MqttDevice dongley_device({
     .identifiers = "dongley",
@@ -14,6 +15,8 @@ constinit HAPPY::Transports::MqttDevice dongley_device({
     .model = "ESP32-S3 WROOM-1 DevKit",
     .append_mac_chars = 4,  // Append last 4 chars of MAC to identifiers and name
 });
+
+static HAPPY::Entities::LastWillStatus last_will_status(dongley_device);
 
 static const char* SCROLL_SPEED_OPTIONS[] = {"Off", "1", "2", "3", "4", "5", "6", "7", "8"};
 

@@ -19,7 +19,7 @@ static lv_obj_t* temperature_label = nullptr;
 static lv_obj_t* humidity_label = nullptr;
 static lv_obj_t* footer_label = nullptr;
 
-void update_motd(const HAPPY::Entities::Text& entity) {
+void update_motd(void*, const HAPPY::Entities::TextBase& entity) {
   ESP_LOGI(TAG, "Updating MOTD to: %.*s", static_cast<int>(entity.get_value().length()),
            entity.get_value().data());
   halpp::Display::Guard lock;

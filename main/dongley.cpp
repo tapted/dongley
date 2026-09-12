@@ -23,7 +23,7 @@ static constexpr char TAG[] = "dongley";
 static volatile bool ntp_is_ready = false;
 }  // namespace
 
-static constinit AlarmClock<3> alarms;
+static constinit AlarmClock<5> alarms;
 static HAPPY::Entities::OtaController* ota_controller = nullptr;
 
 namespace {

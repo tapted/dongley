@@ -80,7 +80,7 @@ void AlarmClockBase::alarm_changed(const HAPPY::Entities::AlarmController& alarm
     if (instance_->alarms_[i] != &alarm) continue;
 
     instance_->clock_task_.set_alarm(i, alarm.time().hour(), alarm.time().minute(),
-                                     alarm.time().second());
+                                     alarm.time().second(), alarm.day_mask().get_bitmask());
     ESP_LOGI("AlarmClock", "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id,
              alarm.time().hour(), alarm.time().minute(), alarm.time().second(),
              alarm.selected_tone().data());
