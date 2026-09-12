@@ -4,3 +4,4 @@ managed_components
 src/network/ssid.h
 size_report.txt
 .ota_revision.json
+sizes.tree.txt
