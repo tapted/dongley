@@ -81,8 +81,10 @@ void AlarmClockBase::alarm_changed(const HAPPY::Entities::AlarmController& alarm
 
     instance_->clock_task_.set_alarm(i, alarm.time().hour(), alarm.time().minute(),
                                      alarm.time().second(), alarm.day_mask().get_bitmask());
-    ESP_LOGI("AlarmClock", "Alarm %d updated: time=%02d:%02d:%02d, tone=%s", alarm.id,
-             alarm.time().hour(), alarm.time().minute(), alarm.time().second(),
-             alarm.selected_tone().data());
+
+    std::string_view mask = alarm.day_mask().get_value();
+    ESP_LOGI("AlarmClock", "Alarm %d updated: time=%02d:%02d:%02d mask=%.*s, tone=%s", alarm.id,
+             alarm.time().hour(), alarm.time().minute(), alarm.time().second(), mask.size(),
+             mask.data(), alarm.selected_tone().data());
   }
 }
