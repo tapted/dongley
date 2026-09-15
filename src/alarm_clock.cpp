@@ -14,21 +14,21 @@ static constexpr const char* const ALARM_TONES[] = {
     "Factory Drone", "Shanty Extended",
 };
 
-static constexpr std::span<const HAL::Note> ALARM_TONE_MELODIES[] = {
+static constexpr std::span<const halpp::Note> ALARM_TONE_MELODIES[] = {
     {},
-    HAL::beeps::acknowledge,
-    HAL::beeps::success,
-    HAL::beeps::error,
-    HAL::beeps::startup,
-    HAL::melodies::mo_li_hua,
-    HAL::melodies::radioactive_riff,
-    HAL::melodies::shanty_riff,
-    HAL::melodies::limit_test_chord,
-    HAL::melodies::korobeiniki,
-    HAL::melodies::korobeiniki_riff,
-    HAL::melodies::ambient_sequence,
-    HAL::melodies::factory_drone,
-    HAL::melodies::shanty_riff_extended,
+    halpp::beeps::acknowledge,
+    halpp::beeps::success,
+    halpp::beeps::error,
+    halpp::beeps::startup,
+    halpp::melodies::mo_li_hua,
+    halpp::melodies::radioactive_riff,
+    halpp::melodies::shanty_riff,
+    halpp::melodies::limit_test_chord,
+    halpp::melodies::korobeiniki,
+    halpp::melodies::korobeiniki_riff,
+    halpp::melodies::ambient_sequence,
+    halpp::melodies::factory_drone,
+    halpp::melodies::shanty_riff_extended,
 };
 
 static AlarmClockBase* instance_ = nullptr;
@@ -43,7 +43,7 @@ static void trigger_alarm(const HAPPY::Entities::AlarmController& alarm) {
         return;
       }
       ESP_LOGI("AlarmClock", "Alarm Id %d: Playing tone: %s (id:%zu)", alarm.id, ALARM_TONES[i], i);
-      HAL::Passive::default_instance().play(ALARM_TONE_MELODIES[i]);
+      halpp::Passive::default_instance().play(ALARM_TONE_MELODIES[i]);
       return;
     }
   }

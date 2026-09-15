@@ -4,24 +4,24 @@
 
 #include "halpp/buzzer/beeps.hpp"
 #include "halpp/buzzer/passive.hpp"
-#include "halpp/segmented/i2c_7seg.hpp"
 #include "halpp/config.hpp"
+#include "halpp/segmented/i2c_7seg.hpp"
 
 constexpr char const TAG[] = "dongley_clock";
 
 EspResult<> init_and_run_clock(volatile bool* exit_stopwatch) {
-  if (EspError err = HAL::Passive::init_default({.gpio_num = halpp::config::Buzzer::PIN_PWM})) {
+  if (EspError err = halpp::Passive::init_default({.gpio_num = halpp::config::Buzzer::PIN_PWM})) {
     return err.log(TAG, "Failed to initialize passive buzzer");
   }
-  HAL::Passive& buzzer = HAL::Passive::default_instance();
+  halpp::Passive& buzzer = halpp::Passive::default_instance();
 
   // disable during development - it's too annoying :P.
-  // buzzer.play(HAL::beeps::startup);
+  // buzzer.play(halpp::beeps::startup);
 
-  if (EspError err = HAL::I2C7Seg::init_default()) {
+  if (EspError err = halpp::I2C7Seg::init_default()) {
     return err.log(TAG, "Failed to initialize 7-segment display");
   }
-  HAL::I2C7Seg& display = HAL::I2C7Seg::default_instance();
+  halpp::I2C7Seg& display = halpp::I2C7Seg::default_instance();
 
   uint32_t i = 0;
   uint32_t divisor = 1;
@@ -35,7 +35,7 @@ EspResult<> init_and_run_clock(volatile bool* exit_stopwatch) {
       delay_ms *= 10;
       next_threshold *= 10;
 
-      buzzer.play(HAL::beeps::success);
+      buzzer.play(halpp::beeps::success);
       ESP_LOGI(TAG, "Scale shifted! Divisor: %lu, Delay: %lu ms", divisor, delay_ms);
     }
 

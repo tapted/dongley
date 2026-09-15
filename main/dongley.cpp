@@ -13,10 +13,10 @@
 #include "espbase/boot/ota_rollback_watchdog.hpp"
 #include "espbase/main_loop.hpp"
 #include "espbase/nvs_store.hpp"
+#include "halpp/config.hpp"
 #include "halpp/led_strip/led_strip.hpp"
 #include "happy/entities/light.hpp"
 #include "happy/entities/ota.hpp"
-#include "halpp/config.hpp"
 
 namespace {
 static constexpr char TAG[] = "dongley";
@@ -66,7 +66,8 @@ extern "C" void app_main(void) {
 
   NvsStore::init_flash().log_error(TAG, "Failed to init NVS flash");
   init_dongley_display();
-  halpp::LedStrip::init_default({.gpio_num = halpp::config::IndicatorLed::PIN_PWM}).log_error(TAG, "Onboard LED init");
+  halpp::LedStrip::init_default({.gpio_num = halpp::config::IndicatorLed::PIN_PWM})
+      .log_error(TAG, "Onboard LED init");
 
   alarms.init(dongley_device);
   ota_controller = new HAPPY::Entities::OtaController(dongley_device, "1.0.0");
