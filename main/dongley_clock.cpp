@@ -10,7 +10,8 @@
 constexpr char const TAG[] = "dongley_clock";
 
 EspResult<> init_and_run_clock(volatile bool* exit_stopwatch) {
-  if (EspError err = halpp::Passive::init_default({.gpio_num = halpp::config::Buzzer::PIN_PWM})) {
+  halpp::Passive::Config buzzer_config({.gpio_num = halpp::config::Buzzer::PIN_PWM});
+  if (EspError err = halpp::Passive::init_default(buzzer_config)) {
     return err.log(TAG, "Failed to initialize passive buzzer");
   }
   halpp::Passive& buzzer = halpp::Passive::default_instance();
